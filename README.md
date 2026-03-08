@@ -20,6 +20,11 @@ domain     → Entities, Value Objects, Repository traits
 infrastructure → Repository implementations (future)
 ```
 
+```
+
+```
+
+```
 domain/
 ├ mod.rs
 ├ error.rs
@@ -34,3 +39,8 @@ domain/
 │ └ email.rs
 ├ audio/ # To be implemented
 └ shared_vo/ # Common value objects (e.g., Email)
+```
+
+```
+
+```
