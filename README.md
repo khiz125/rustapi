@@ -20,9 +20,7 @@ domain     → Entities, Value Objects, Repository traits
 infrastructure → Repository implementations (future)
 ```
 
-```
-
-```
+- Domain
 
 ```
 domain/
