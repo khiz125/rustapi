@@ -31,10 +31,10 @@ domain/
 │ ├ entity.rs
 │ ├ repository.rs
 │ └ vo/
-│ ├ mod.rs
-│ ├ user_id.rs
-│ ├ user_name.rs
-│ └ email.rs
+│   ├ mod.rs
+│   ├ user_id.rs
+│   ├ user_name.rs
+│   └ email.rs
 ├ audio/ # To be implemented
 └ shared_vo/ # Common value objects (e.g., Email)
 ```
