@@ -1,7 +1,6 @@
 use crate::domain::error::DomainError;
 use crate::domain::user::entity::User;
 use async_trait::async_trait;
-use axum::async_trait;
 
 #[async_trait]
 pub trait UserRepository: Send + Sync {
