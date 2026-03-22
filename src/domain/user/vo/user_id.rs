@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UserId(i32);
 
 impl UserId {
@@ -10,4 +10,3 @@ impl UserId {
         self.0
     }
 }
-

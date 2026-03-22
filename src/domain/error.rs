@@ -1,7 +1,8 @@
 #[derive(Debug)]
 pub enum DomainError {
-    InvalidEmail,
+    InvalidPassword,
     InvalidUserName,
-    NotFound,
-    Other(String),
+    InvalidEmail,
+    UserNotFound,
+    UnExpected(String),
 }
