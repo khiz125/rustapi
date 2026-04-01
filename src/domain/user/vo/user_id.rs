@@ -1,12 +1,12 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UserId(i32);
+pub struct UserId(i64);
 
 impl UserId {
-    pub fn new(id: i32) -> Self {
+    pub fn new(id: i64) -> Self {
         Self(id)
     }
 
-    pub fn value(&self) -> i32 {
+    pub fn value(&self) -> i64 {
         self.0
     }
 }

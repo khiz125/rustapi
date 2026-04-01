@@ -1,18 +1,18 @@
 use crate::domain::user::user_auth::UserAuth;
-use crate::domain::user::vo::{UserId, UserName};
+use crate::domain::user::vo::{user_id::UserId, user_name::UserName};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
 pub struct User {
     pub id: UserId,
     pub name: UserName,
-    pub auth: Option<UserAuth>,
+    pub auth: UserAuth,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 impl User {
-    pub fn new(id: UserId, name: UserName, auth: Option<UserAuth>) -> Self {
+    pub fn new(id: UserId, name: UserName, auth: UserAuth) -> Self {
         let now = Utc::now();
         Self {
             id,
@@ -29,8 +29,8 @@ impl User {
     pub fn name(&self) -> &UserName {
         &self.name
     }
-    pub fn auth(&self) -> Option<&UserAuth> {
-        self.auth.as_ref()
+    pub fn auth(&self) -> &UserAuth {
+        &self.auth
     }
 
     pub fn created_at(&self) -> &DateTime<Utc> {
@@ -43,11 +43,6 @@ impl User {
 
     pub fn change_name(&mut self, name: UserName) {
         self.name = name;
-        self.updated_at = Utc::now();
-    }
-
-    pub fn set_auth(&mut self, auth: UserAuth) {
-        self.auth = Some(auth);
         self.updated_at = Utc::now();
     }
 }

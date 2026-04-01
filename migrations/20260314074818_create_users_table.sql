@@ -1,45 +1,27 @@
--- Add migration script here
+CREATE TYPE auth_kind AS ENUM ('password_hash','oauth');
 
-create type auth_kind as enum ('password_hash','oauth')
-
-create table users (
-  id bifserial PRIMARY KEY,
-  name text not null,
-  created_at timestamp not null default now(),
-  updated_at timestamp not null default now()
+CREATE TABLE users (
+  id bigserial PRIMARY KEY,
+  name text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table user_auth (
-  user_id bigint primary key references users(id) on delete cascade,
-  kind auth_kind not null,
+CREATE TABLE user_auth (
+  user_id bigint PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  kind auth_kind NOT NULL,
 
-  -- password_hash
   email text,
   password_hash text,
-
-  -- oauth
   provider text,
   provider_user_id text,
 
-  created_at timestamp not null default now(),
-  updated_at timestamp not null default now(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
 
-  -- xor: password_hash or oauth
-  check(
-    (kind = 'password_hash'
-      and email is not null
-      and password_hash is not null
-      and provider is null
-      and provider_user_id is null
-    )
-    or
-    (kind = 'oauth'
-      and provider is not null
-      and provider_user_id is not null
-      and email is null
-      ando password_hash is null
-    )
+  CHECK (
+    (kind = 'password_hash' AND email IS NOT NULL AND password_hash IS NOT NULL AND provider IS NULL AND provider_user_id IS NULL)
+    OR
+    (kind = 'oauth' AND provider IS NOT NULL AND provider_user_id IS NOT NULL AND email IS NULL AND password_hash IS NULL)
   )
 );
-
-

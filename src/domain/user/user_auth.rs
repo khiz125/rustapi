@@ -1,67 +1,65 @@
-use crate::domain::user::vo::{AuthMethod, PasswordHash, UserId};
+use crate::domain::user::vo::{
+    email::Email, oauth_provider::OAuthProvider, password_hash::PasswordHash,
+    provider_user_id::ProviderUserId, user_id::UserId,
+};
 use chrono::{DateTime, Utc};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AuthKind {
-    PasswordHash,
-    OAuth,
+#[derive(Debug, Clone)]
+
+pub enum AuthMethod {
+    Password {
+        email: Email,
+        password_hash: PasswordHash,
+    },
+    OAuth {
+        provider: OAuthProvider,
+        provider_user_id: ProviderUserId,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub struct UserAuth {
-    user_id: UserId,
-    kind: AuthKind,
-    auth: AuthMethod,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+    pub user_id: UserId,
+    pub method: AuthMethod,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl UserAuth {
-    pub fn new(user_id: UserId, auth: AuthMethod) -> Self {
-        let kind = match &auth {
-            AuthMethod::Password { .. } => AuthKind::PasswordHash,
-            AuthMethod::OAuth { .. } => AuthKind::OAuth,
-        };
+    pub fn new_password(user_id: UserId, email: Email, password_hash: PasswordHash) -> Self {
         let now = Utc::now();
         Self {
             user_id,
-            kind,
-            auth,
+            method: AuthMethod::Password {
+                email,
+                password_hash,
+            },
             created_at: now,
             updated_at: now,
         }
     }
 
-    pub fn user_id(&self) -> &UserId {
-        &self.user_id
+    pub fn new_oauth(
+        user_id: UserId,
+        provider: OAuthProvider,
+        provider_user_id: ProviderUserId,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            user_id,
+            method: AuthMethod::OAuth {
+                provider,
+                provider_user_id,
+            },
+            created_at: now,
+            updated_at: now,
+        }
     }
 
-    pub fn kind(&self) -> &AuthKind {
-        &self.kind
-    }
-
-    pub fn auth(&self) -> &AuthMethod {
-        &self.auth
-    }
-
-    pub fn created_at(&self) -> &DateTime<Utc> {
-        &self.created_at
-    }
-
-    pub fn updated_at(&self) -> &DateTime<Utc> {
-        &self.updated_at
-    }
-
-    pub fn update_password(&mut self, new_password_hash: PasswordHash) {
-        match &self.auth {
-            AuthMethod::Password { email, .. } => {
-                self.auth = AuthMethod::Password {
-                    email: email.clone(),
-                    password_hash: new_password_hash,
-                };
-                self.updated_at = Utc::now();
-            }
-            AuthMethod::OAuth { .. } => panic!("Cannot update password for OAuth user"),
+    pub fn email(&self) -> Option<&Email> {
+        match &self.method {
+            AuthMethod::Password { email, .. } => Some(email),
+            AuthMethod::OAuth { .. } => None,
         }
     }
 }

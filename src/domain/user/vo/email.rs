@@ -6,7 +6,7 @@ pub struct Email(String);
 impl Email {
     pub fn new(value: String) -> Result<Self, DomainError> {
         if !value.contains("@") {
-            return Err(DomainError::InvalidEmail);
+            return Err(DomainError::InvalidEmail(value));
         }
         Ok(Self(value))
     }

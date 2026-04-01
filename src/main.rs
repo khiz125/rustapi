@@ -4,7 +4,7 @@ mod infrastructure;
 use std::env;
 
 use infrastructure::database::connection::create_pool;
-use infrastructure::repository::user_repository::SqlxUserRepository;
+use infrastructure::user::repository::PgUserRepository;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let pool = create_pool(&database_url).await?;
 
-    let user_repository = SqlxUserRepository::new(pool);
+    let user_repository = PgUserRepository::new(pool);
 
     println!("Server initialized");
 

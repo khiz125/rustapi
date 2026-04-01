@@ -4,11 +4,12 @@ use crate::domain::error::DomainError;
 pub struct UserName(String);
 
 impl UserName {
-    pub fn new(value: String) -> Result<Self, DomainError> {
-        if value.is_empty() {
-            return Err(DomainError::InvalidUserName);
+    pub fn new(name: impl Into<String>) -> Result<Self, DomainError> {
+        let name: String = name.into();
+        if name.is_empty() || name.len() > 30 {
+            return Err(DomainError::InvalidUserName(name));
         }
-        Ok(Self(value))
+        Ok(Self(name))
     }
 
     pub fn value(&self) -> &str {
