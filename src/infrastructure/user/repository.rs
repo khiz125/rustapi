@@ -20,69 +20,10 @@ impl PgUserRepository {
     }
 }
 
-#[allow(dead_code)]
-fn to_domain(user_row: UserRow) -> Result<User, DomainError> {
-    let user_id = UserId::new(user_row.id);
-    let name = UserName::new(user_row.name).map_err(|e| DomainError::Unexpected(e.to_string()))?;
-
-    let method = match user_row.kind.as_str() {
-        "password_hash" => {
-            let email = Email::new(user_row.email.ok_or_else(|| {
-                DomainError::Unexpected("email is null for password_hash".into())
-            })?)
-            .map_err(|e| DomainError::Unexpected(e.to_string()))?;
-            let password_hash = PasswordHash::new(
-                user_row
-                    .password_hash
-                    .ok_or_else(|| DomainError::Unexpected("password_hash is null".into()))?,
-            );
-            AuthMethod::Password {
-                email,
-                password_hash,
-            }
-        }
-        "oauth" => {
-            let provider_str = user_row
-                .provider
-                .ok_or_else(|| DomainError::Unexpected("provider is null".into()))?;
-            let provider = OAuthProvider::from_str(&provider_str)
-                .ok_or_else(|| DomainError::Unexpected("provider_user_id is null".into()))?;
-            let provider_user_id = ProviderUserId::new(
-                user_row
-                    .provider_user_id
-                    .ok_or_else(|| DomainError::Unexpected("provider_user_id is null".into()))?,
-            );
-            AuthMethod::OAuth {
-                provider,
-                provider_user_id,
-            }
-        }
-        other => {
-            return Err(DomainError::Unexpected(format!(
-                "unknown auth kind: {}",
-                other
-            )));
-        }
-    };
-
-    Ok(User {
-        id: user_id,
-        name,
-        auth: UserAuth {
-            user_id,
-            method,
-            created_at: user_row.auth_created_at,
-            updated_at: user_row.auth_updated_at,
-        },
-        created_at: user_row.created_at,
-        updated_at: user_row.updated_at,
-    })
-}
-
 #[async_trait]
 impl UserRepository for PgUserRepository {
     async fn find_by_id(&self, id: UserId) -> Result<Option<User>, DomainError> {
-        let user_row = sqlx::query!(
+        let row = sqlx::query!(
             r#"
               SELECT
                 u.id,
@@ -106,23 +47,46 @@ impl UserRepository for PgUserRepository {
         .await
         .map_err(|e| DomainError::Unexpected(e.to_string()))?;
 
-        let Some(user_row) = user_row else {
+        let Some(row) = row else {
             return Ok(None);
         };
-
-        Ok(Some(to_domain(UserRow {
-            id: user_row.id,
-            name: user_row.name,
-            created_at: user_row.created_at,
-            updated_at: user_row.updated_at,
-            kind: user_row.kind,
-            email: user_row.email,
-            password_hash: user_row.password_hash,
-            provider: user_row.provider,
-            provider_user_id: user_row.provider_user_id,
-            auth_created_at: user_row.auth_created_at,
-            auth_updated_at: user_row.auth_updated_at,
-        })?))
+        let user_row = UserRow {
+            id: row.id,
+            name: row.name,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            auth: match row.kind.as_str() {
+                "password_hash" => AuthRow::Password {
+                    email: row
+                        .email
+                        .ok_or_else(|| DomainError::Unexpected("email is null".into()))?,
+                    password_hash: row
+                        .password_hash
+                        .ok_or_else(|| DomainError::Unexpected("password_hash is null".into()))?,
+                    created_at: row.auth_created_at,
+                    updated_at: row.auth_updated_at,
+                },
+                "oauth" => AuthRow::OAuth {
+                    provider: OAuthProvider::from_str(
+                        &row.provider
+                            .ok_or_else(|| DomainError::Unexpected("provider is null".into()))?,
+                    )
+                    .ok_or_else(|| DomainError::Unexpected("invalid OAuth provider".into()))?,
+                    provider_user_id: row.provider_user_id.ok_or_else(|| {
+                        DomainError::Unexpected("provider_user_id is null".into())
+                    })?,
+                    created_at: row.auth_created_at,
+                    updated_at: row.auth_updated_at,
+                },
+                other => {
+                    return Err(DomainError::Unexpected(format!(
+                        "unknown auth kind: {}",
+                        other
+                    )));
+                }
+            },
+        };
+        Ok(Some(user_row.to_domain()?))
     }
 
     async fn create(&self, user: User) -> Result<User, DomainError> {
@@ -171,12 +135,13 @@ impl UserRepository for PgUserRepository {
                 .await
                 .map_err(|e| DomainError::Unexpected(e.to_string()))?;
 
-                AuthRow {
-                    kind: row.kind,
-                    email: row.email,
-                    password_hash: row.password_hash,
-                    provider: row.provider,
-                    provider_user_id: row.provider_user_id,
+                AuthRow::Password {
+                    email: row
+                        .email
+                        .ok_or_else(|| DomainError::Unexpected("email is null".into()))?,
+                    password_hash: row
+                        .password_hash
+                        .ok_or_else(|| DomainError::Unexpected("password_hash is null".into()))?,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 }
@@ -208,12 +173,15 @@ impl UserRepository for PgUserRepository {
                 .await
                 .map_err(|e| DomainError::Unexpected(e.to_string()))?;
 
-                AuthRow {
-                    kind: row.kind,
-                    email: row.email,
-                    password_hash: row.password_hash,
-                    provider: row.provider,
-                    provider_user_id: row.provider_user_id,
+                AuthRow::OAuth {
+                    provider: OAuthProvider::from_str(
+                        &row.provider
+                            .ok_or_else(|| DomainError::Unexpected("provider is null".into()))?,
+                    )
+                    .ok_or_else(|| DomainError::Unexpected("invalid OAuth provider".into()))?,
+                    provider_user_id: row.provider_user_id.ok_or_else(|| {
+                        DomainError::Unexpected("provider_user_id is null".into())
+                    })?,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 }
@@ -224,18 +192,14 @@ impl UserRepository for PgUserRepository {
             .await
             .map_err(|e| DomainError::Unexpected(e.to_string()))?;
 
-        to_domain(UserRow {
+        let user_row_dto = UserRow {
             id: user_row.id,
             name: user_row.name,
             created_at: user_row.created_at,
             updated_at: user_row.updated_at,
-            kind: auth_row.kind,
-            email: auth_row.email,
-            password_hash: auth_row.password_hash,
-            provider: auth_row.provider,
-            provider_user_id: auth_row.provider_user_id,
-            auth_created_at: auth_row.created_at,
-            auth_updated_at: auth_row.updated_at,
-        })
+            auth: auth_row,
+        };
+
+        user_row_dto.to_domain()
     }
 }
