@@ -1,6 +1,9 @@
-use crate::domain::user::vo::{
-    email::Email, oauth_provider::OAuthProvider, password_hash::PasswordHash,
-    provider_user_id::ProviderUserId, user_id::UserId,
+use crate::domain::{
+    error::DomainError,
+    user::vo::{
+        email::Email, oauth_provider::OAuthProvider, password_hash::PasswordHash,
+        provider_user_id::ProviderUserId, user_id::UserId,
+    },
 };
 use chrono::{DateTime, Utc};
 
@@ -20,7 +23,7 @@ pub enum AuthMethod {
 #[derive(Debug, Clone)]
 pub struct UserAuth {
     pub user_id: UserId,
-    pub method: AuthMethod,
+    pub auth_method: AuthMethod,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -30,7 +33,7 @@ impl UserAuth {
         let now = Utc::now();
         Self {
             user_id,
-            method: AuthMethod::Password {
+            auth_method: AuthMethod::Password {
                 email,
                 password_hash,
             },
@@ -47,7 +50,7 @@ impl UserAuth {
         let now = Utc::now();
         Self {
             user_id,
-            method: AuthMethod::OAuth {
+            auth_method: AuthMethod::OAuth {
                 provider,
                 provider_user_id,
             },
@@ -57,9 +60,23 @@ impl UserAuth {
     }
 
     pub fn email(&self) -> Option<&Email> {
-        match &self.method {
+        match &self.auth_method {
             AuthMethod::Password { email, .. } => Some(email),
             AuthMethod::OAuth { .. } => None,
+        }
+    }
+
+    pub fn change_password(&mut self, new_password_hash: PasswordHash) -> Result<(), DomainError> {
+        match &self.auth_method {
+            AuthMethod::Password { email, .. } => {
+                self.auth_method = AuthMethod::Password {
+                    email: email.clone(),
+                    password_hash: new_password_hash,
+                };
+                self.updated_at = Utc::now();
+                Ok(())
+            }
+            AuthMethod::OAuth { .. } => Err(DomainError::NotPasswordAuthUser),
         }
     }
 }

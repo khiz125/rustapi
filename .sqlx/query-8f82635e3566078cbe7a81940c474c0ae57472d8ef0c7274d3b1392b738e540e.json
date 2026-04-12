@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE user_auth\n            SET password_hash = $1,\n            updated_at = now()\n            WHERE user_id = $2\n            AND kind = 'password_hash'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8f82635e3566078cbe7a81940c474c0ae57472d8ef0c7274d3b1392b738e540e"
+}

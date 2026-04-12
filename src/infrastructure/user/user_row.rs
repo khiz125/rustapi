@@ -35,15 +35,16 @@ pub(super) struct UserRow {
     pub name: String,
     pub created_at: UtcDateTime,
     pub updated_at: UtcDateTime,
-    pub auth: AuthRow,
+    pub kind: AuthRow,
 }
 
+#[allow(dead_code)]
 impl UserRow {
-    pub fn to_domain(self) -> Result<User, DomainError> {
+    pub fn into_domain(self) -> Result<User, DomainError> {
         let user_id = UserId::new(self.id);
         let name = UserName::new(self.name).map_err(|e| DomainError::Unexpected(e.to_string()))?;
 
-        let (method, auth_created_at, auth_updated_at) = match self.auth {
+        let (auth_method, auth_created_at, auth_updated_at) = match self.auth {
             AuthRow::Password {
                 email,
                 password_hash,
@@ -85,12 +86,48 @@ impl UserRow {
             name,
             auth: UserAuth {
                 user_id,
-                method,
+                auth_method,
                 created_at: auth_created_at,
                 updated_at: auth_updated_at,
             },
             created_at: self.created_at,
             updated_at: self.updated_at,
         })
+    }
+}
+
+impl AuthRow {
+    pub fn from_row(
+        kind: &str,
+        email: Option<String>,
+        password_hash: Option<String>,
+        provider: Option<String>,
+        provider_user_id: Option<String>,
+        created_at: UtcDateTime,
+        updated_at: UtcDateTime,
+    ) -> Result<Self, DomainError> {
+        match kind {
+            "password_hash" => Ok(AuthRow::Password {
+                email: email.ok_or_else(|| DomainError::Unexpected("email is null".into()))?,
+                password_hash: password_hash
+                    .ok_or_else(|| DomainError::Unexpected("password_hash is null".into()))?,
+                created_at,
+                updated_at,
+            }),
+            "oauth" => Ok(AuthRow::OAuth {
+                provider: OAuthProvider::from_str(
+                    &provider.ok_or_else(|| DomainError::Unexpected("provider is null".into()))?,
+                )
+                .ok_or_else(|| DomainError::Unexpected("invalid OAuth provider".into()))?,
+                provider_user_id: provider_user_id
+                    .ok_or_else(|| DomainError::Unexpected("provider_user_id is null".into()))?,
+                created_at,
+                updated_at,
+            }),
+            other => Err(DomainError::Unexpected(format!(
+                "unknown auth kind: {}",
+                other
+            ))),
+        }
     }
 }
