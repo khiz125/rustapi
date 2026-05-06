@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::domain::error::DomainError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -14,5 +16,11 @@ impl Email {
 
     pub fn value(&self) -> &str {
         &self.0
+    }
+}
+
+impl fmt::Display for Email {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

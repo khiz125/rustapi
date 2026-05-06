@@ -44,7 +44,7 @@ impl UserRow {
         let user_id = UserId::new(self.id);
         let name = UserName::new(self.name).map_err(|e| DomainError::Unexpected(e.to_string()))?;
 
-        let (auth_method, auth_created_at, auth_updated_at) = match self.auth {
+        let (auth_method, auth_created_at, auth_updated_at) = match self.kind {
             AuthRow::Password {
                 email,
                 password_hash,

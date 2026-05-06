@@ -5,7 +5,7 @@ use crate::domain::user::repository::UserRepository;
 use crate::domain::user::user_auth::AuthMethod;
 use crate::domain::user::vo::{
     email::Email, oauth_provider::OAuthProvider, password_hash::PasswordHash,
-    provider_user_id::ProviderUserId, user_id::UserId, user_name::UserName,
+    provider_user_id::ProviderUserId, user_id::UserId,
 };
 
 use async_trait::async_trait;

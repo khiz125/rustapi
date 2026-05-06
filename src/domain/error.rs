@@ -1,10 +1,12 @@
+use crate::domain::user::vo::{Email, UserName};
+
 #[derive(Debug, thiserror::Error)]
 pub enum DomainError {
     #[error("invalid password")]
     InvalidPassword,
 
     #[error("invalid user name: {0}")]
-    InvalidUserName(String),
+    InvalidUserName(UserName),
 
     #[error("invalid email: {0}")]
     InvalidEmail(String),
@@ -22,5 +24,5 @@ pub enum DomainError {
     Unexpected(String),
 
     #[error("email already exists: {0}")]
-    EmailAlreadyExists(String),
+    EmailAlreadyExists(Email),
 }
