@@ -3,7 +3,7 @@ use crate::domain::user::User;
 use crate::domain::user::vo::email::Email;
 use crate::domain::user::vo::oauth_provider::OAuthProvider;
 use crate::domain::user::vo::provider_user_id::ProviderUserId;
-use crate::domain::user::vo::{password_hash::PasswordHash, user_id::UserId, user_name::UserName};
+use crate::domain::user::vo::{password_hash::PasswordHash, user_id::UserId};
 
 #[async_trait::async_trait]
 pub trait UserRepository: Send + Sync {

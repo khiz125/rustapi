@@ -20,5 +20,5 @@ pub fn verify_password(raw: &str, hash: &str) -> Result<(), DomainError> {
     let parsed = Argon2Hash::new(hash).map_err(|e| DomainError::Unexpected(e.to_string()))?;
     Argon2::default()
         .verify_password(raw.as_bytes(), &parsed)
-        .map_err(|_| DomainError::InvalidPassword)
+        .map_err(|_| DomainError::IncorrectPassword)
 }

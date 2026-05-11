@@ -11,6 +11,7 @@ use crate::domain::user::vo::{
 use async_trait::async_trait;
 use sqlx::PgPool;
 
+#[derive(Clone)]
 pub struct PgUserRepository {
     pool: PgPool,
 }

@@ -2,7 +2,7 @@ use crate::domain::error::DomainError;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::user_auth::AuthMethod;
 use crate::domain::user::vo::UserId;
-use crate::usecase::auth::password::{hash_password, verify_password};
+use crate::usecase::auth::password_crypto::{hash_password, verify_password};
 use std::sync::Arc;
 
 pub struct UpdatePasswordInput {
@@ -20,7 +20,7 @@ impl<R: UserRepository> UpdatePasswordUsecase<R> {
         Self { user_repository }
     }
 
-    pub async fn execute(&self, inout: UpdatePasswordInput) -> Result<(), DomainError> {
+    pub async fn execute(&self, input: UpdatePasswordInput) -> Result<(), DomainError> {
         let user_id = UserId::new(input.user_id);
 
         let user = self
@@ -34,7 +34,7 @@ impl<R: UserRepository> UpdatePasswordUsecase<R> {
             AuthMethod::OAuth { .. } => return Err(DomainError::NotPasswordAuthUser),
         };
 
-        verify_password(&input.current_password, &current_password)?;
+        verify_password(&input.current_password, &current_hash)?;
 
         let new_hash = hash_password(&input.new_password)?;
 

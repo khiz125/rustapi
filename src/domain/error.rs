@@ -2,9 +2,6 @@ use crate::domain::user::vo::{Email, UserName};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DomainError {
-    #[error("invalid password")]
-    InvalidPassword,
-
     #[error("invalid user name: {0}")]
     InvalidUserName(UserName),
 

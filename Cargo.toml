@@ -18,7 +18,7 @@ sqlx = { version = "0.7", features = [
 ] }
 thiserror = "2"
 dotenvy = "0.15"
-jsonwebtoken = "10"
+jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 argon2 = "0.5"
 axum = { version = "0.8", features = ["macros"] }
 axum-extra = { version = "0.12", features = ["typed-header"] }

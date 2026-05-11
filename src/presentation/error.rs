@@ -17,7 +17,6 @@ impl IntoResponse for AppError {
         let (status, message) = match self.0 {
             DomainError::UserNotFound => (StatusCode::NOT_FOUND, "user not found"),
             DomainError::EmailAlreadyExists(_) => (StatusCode::CONFLICT, "email already exists"),
-            DomainError::InvalidPassword => (StatusCode::UNAUTHORIZED, "invalid password"),
             DomainError::IncorrectPassword => (StatusCode::UNAUTHORIZED, "incorrect password"),
             DomainError::NotPasswordAuthUser => {
                 (StatusCode::BAD_REQUEST, "not a password auth user")
