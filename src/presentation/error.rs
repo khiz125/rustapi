@@ -23,6 +23,7 @@ impl IntoResponse for AppError {
             }
             DomainError::InvalidEmail(_) => (StatusCode::BAD_REQUEST, "invalid email"),
             DomainError::InvalidUserName(_) => (StatusCode::BAD_REQUEST, "invalid user name"),
+            DomainError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
             DomainError::Unexpected(_) => (StatusCode::INTERNAL_SERVER_ERROR, "unexpected error"),
         };
 

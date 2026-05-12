@@ -14,6 +14,9 @@ pub enum DomainError {
     #[error("current password is incorrect")]
     IncorrectPassword,
 
+    #[error("unauthorized")]
+    Unauthorized,
+
     #[error("user not found")]
     UserNotFound,
 

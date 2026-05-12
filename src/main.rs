@@ -1,5 +1,6 @@
 mod domain;
 mod infrastructure;
+mod middleware;
 mod presentation;
 mod usecase;
 
