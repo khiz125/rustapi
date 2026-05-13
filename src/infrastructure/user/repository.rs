@@ -3,6 +3,7 @@ use crate::domain::error::DomainError;
 use crate::domain::user::User;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::user_auth::AuthMethod;
+use crate::domain::user::vo::UserName;
 use crate::domain::user::vo::{
     email::Email, oauth_provider::OAuthProvider, password_hash::PasswordHash,
     provider_user_id::ProviderUserId, user_id::UserId,
@@ -307,7 +308,7 @@ impl UserRepository for PgUserRepository {
         Ok(())
     }
 
-    async fn save(&self, user: &User) -> Result<(), DomainError> {
+    async fn update_name(&self, user_id: UserId, new_name: UserName) -> Result<(), DomainError> {
         sqlx::query!(
             r#"
             UPDATE users
@@ -315,8 +316,8 @@ impl UserRepository for PgUserRepository {
             updated_at = now()
             WHERE id = $2
             "#,
-            user.name.value(),
-            user.id.value()
+            new_name.value(),
+            user_id.value()
         )
         .execute(&self.pool)
         .await

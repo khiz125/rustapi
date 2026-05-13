@@ -15,6 +15,7 @@ use std::env;
 use std::sync::Arc;
 
 use crate::infrastructure::database::connection::create_pool;
+use crate::usecase::user::update_name::UpdateNameUsecase;
 
 #[tokio::main]
 async fn main() {
@@ -39,6 +40,7 @@ async fn main() {
             jwt_secret.clone(),
         )),
         update_password: Arc::new(UpdatePasswordUsecase::new(user_repository.clone())),
+        update_name: Arc::new(UpdateNameUsecase::new(user_repository.clone())),
     };
 
     let app = create_router(state);

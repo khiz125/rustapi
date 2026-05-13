@@ -10,5 +10,6 @@ pub fn create_router<R: UserRepository + Clone + 'static>(state: AppState<R>) ->
         .route("/auth/login", post(auth::login::<R>))
         .route("/auth/logout", post(auth::logout))
         .route("/users/me/password", put(user::update_password::<R>))
+        .route("/users/me/name", put(user::update_name::<R>))
         .with_state(state)
 }
