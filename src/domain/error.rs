@@ -8,6 +8,9 @@ pub enum DomainError {
     #[error("invalid email: {0}")]
     InvalidEmail(String),
 
+    #[error("invalid request: {0}")]
+    InvalidRequest(String),
+
     #[error("not a password auth user")]
     NotPasswordAuthUser,
 

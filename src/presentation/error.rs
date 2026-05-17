@@ -1,8 +1,9 @@
 use crate::domain::error::DomainError;
+use crate::presentation::error_code as ec;
 use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use serde_json::json;
+use serde::Serialize;
 
 pub struct AppError(DomainError);
 
@@ -12,21 +13,73 @@ impl From<DomainError> for AppError {
     }
 }
 
+#[derive(Serialize)]
+struct ErrorBody {
+    error: ErrorDetail,
+}
+
+#[derive(Serialize)]
+struct ErrorDetail {
+    code: &'static str,
+    message: &'static str,
+    detail: Option<String>,
+}
+
+impl ErrorBody {
+    fn new(code: &'static str, message: &'static str, detail: Option<String>) -> Self {
+        Self {
+            error: ErrorDetail {
+                code,
+                message,
+                detail,
+            },
+        }
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, message) = match self.0 {
-            DomainError::UserNotFound => (StatusCode::NOT_FOUND, "user not found"),
-            DomainError::EmailAlreadyExists(_) => (StatusCode::CONFLICT, "email already exists"),
-            DomainError::IncorrectPassword => (StatusCode::UNAUTHORIZED, "incorrect password"),
-            DomainError::NotPasswordAuthUser => {
-                (StatusCode::BAD_REQUEST, "not a password auth user")
+        let (status, error_code, detail) = match self.0 {
+            DomainError::UserNotFound => (StatusCode::NOT_FOUND, &ec::USER_NOT_FOUND, None),
+            DomainError::EmailAlreadyExists(detail) => (
+                StatusCode::CONFLICT,
+                &ec::EMAIL_ALREADY_EXISTS,
+                Some(detail.to_string()),
+            ),
+            DomainError::IncorrectPassword => {
+                (StatusCode::UNAUTHORIZED, &ec::INCORRECT_PASSWORD, None)
             }
-            DomainError::InvalidEmail(_) => (StatusCode::BAD_REQUEST, "invalid email"),
-            DomainError::InvalidUserName(_) => (StatusCode::BAD_REQUEST, "invalid user name"),
-            DomainError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
-            DomainError::Unexpected(_) => (StatusCode::INTERNAL_SERVER_ERROR, "unexpected error"),
+            DomainError::NotPasswordAuthUser => {
+                (StatusCode::BAD_REQUEST, &ec::NOT_PASSWORD_AUTH_USER, None)
+            }
+            DomainError::InvalidEmail(detail) => (
+                StatusCode::BAD_REQUEST,
+                &ec::INVALID_EMAIL,
+                Some(detail.to_string()),
+            ),
+            DomainError::InvalidUserName(detail) => (
+                StatusCode::BAD_REQUEST,
+                &ec::INVALID_USER_NAME,
+                Some(detail.to_string()),
+            ),
+            DomainError::Unauthorized => (StatusCode::UNAUTHORIZED, &ec::UNAUTHORIZED, None),
+            DomainError::InvalidRequest(detail) => {
+                (StatusCode::BAD_REQUEST, &ec::INVALID_REQUEST, Some(detail))
+            }
+            DomainError::Unexpected(e) => {
+                tracing::error!("unexpected error: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &ec::INTERNAL_SERVER_ERROR,
+                    None,
+                )
+            }
         };
 
-        (status, Json(json!({ "error": message }))).into_response()
+        (
+            status,
+            Json(ErrorBody::new(error_code.code, error_code.message, detail)),
+        )
+            .into_response()
     }
 }

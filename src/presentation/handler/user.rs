@@ -1,3 +1,4 @@
+use crate::domain::error::DomainError;
 use crate::domain::user::repository::UserRepository;
 use crate::middleware::auth::AuthUser;
 use crate::presentation::error::AppError;
@@ -6,6 +7,7 @@ use crate::usecase::user::update_name::UpdateNameInput;
 use crate::usecase::user::update_password::UpdatePasswordInput;
 use axum::Json;
 use axum::extract::State;
+use axum::extract::rejection::JsonRejection;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
@@ -24,8 +26,10 @@ pub struct UpdateNameRequest {
 pub async fn update_password<R: UserRepository + Clone>(
     State(state): State<AppState<R>>,
     AuthUser(claims): AuthUser,
-    Json(body): Json<UpdatePasswordRequest>,
+    body: Result<Json<UpdatePasswordRequest>, JsonRejection>,
 ) -> Result<impl IntoResponse, AppError> {
+    let Json(body) = body.map_err(|e| DomainError::InvalidRequest(e.to_string()))?;
+
     state
         .update_password
         .execute(UpdatePasswordInput {
@@ -41,8 +45,10 @@ pub async fn update_password<R: UserRepository + Clone>(
 pub async fn update_name<R: UserRepository + Clone>(
     State(state): State<AppState<R>>,
     AuthUser(claims): AuthUser,
-    Json(body): Json<UpdateNameRequest>,
+    body: Result<Json<UpdateNameRequest>, JsonRejection>,
 ) -> Result<impl IntoResponse, AppError> {
+    let Json(body) = body.map_err(|e| DomainError::InvalidRequest(e.to_string()))?;
+
     state
         .update_name
         .execute(UpdateNameInput {

@@ -1,12 +1,13 @@
+use crate::domain::error::DomainError;
 use crate::domain::user::repository::UserRepository;
 use crate::presentation::error::AppError;
 use crate::presentation::state::AppState;
 use crate::usecase::auth::login_with_email::LoginWithEmailInput;
 use crate::usecase::auth::sign_up_with_email::SignUpWithEmailInput;
-use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use axum::{Json, extract::rejection::JsonRejection};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -36,8 +37,9 @@ pub struct LoginResponse {
 
 pub async fn sign_up<R: UserRepository + Clone>(
     State(state): State<AppState<R>>,
-    Json(body): Json<SignUpRequest>,
+    body: Result<Json<SignUpRequest>, JsonRejection>,
 ) -> Result<impl IntoResponse, AppError> {
+    let Json(body) = body.map_err(|e| DomainError::InvalidRequest(e.to_string()))?;
     let output = state
         .sign_up
         .execute(SignUpWithEmailInput {
@@ -57,8 +59,10 @@ pub async fn sign_up<R: UserRepository + Clone>(
 
 pub async fn login<R: UserRepository + Clone>(
     State(state): State<AppState<R>>,
-    Json(body): Json<LoginRequest>,
+    body: Result<Json<LoginRequest>, JsonRejection>,
 ) -> Result<impl IntoResponse, AppError> {
+    let Json(body) = body.map_err(|e| DomainError::InvalidRequest(e.to_string()))?;
+
     let output = state
         .login
         .execute(LoginWithEmailInput {
