@@ -47,18 +47,3 @@ pub const INVALID_REQUEST: ErrorCode = ErrorCode {
     code: "INVALID_REQUEST",
     message: "invalid request",
 };
-
-pub const INVALID_REQUEST_BODY: ErrorCode = ErrorCode {
-    code: "INVALID_REQUEST_BODY",
-    message: "invalid request body",
-};
-
-pub const INVALID_JSON: ErrorCode = ErrorCode {
-    code: "INVALID_JSON",
-    message: "invalid json",
-};
-
-pub const MISSING_CONTENT_TYPE: ErrorCode = ErrorCode {
-    code: "MISSING_CONTENT_TYPE",
-    message: "Content-Type must be application/json",
-};

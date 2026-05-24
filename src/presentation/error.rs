@@ -41,11 +41,9 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_code, detail) = match self.0 {
             DomainError::UserNotFound => (StatusCode::NOT_FOUND, &ec::USER_NOT_FOUND, None),
-            DomainError::EmailAlreadyExists(detail) => (
-                StatusCode::CONFLICT,
-                &ec::EMAIL_ALREADY_EXISTS,
-                Some(detail.to_string()),
-            ),
+            DomainError::EmailAlreadyExists => {
+                (StatusCode::CONFLICT, &ec::EMAIL_ALREADY_EXISTS, None)
+            }
             DomainError::IncorrectPassword => {
                 (StatusCode::UNAUTHORIZED, &ec::INCORRECT_PASSWORD, None)
             }

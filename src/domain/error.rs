@@ -26,6 +26,6 @@ pub enum DomainError {
     #[error("unexpected error: {0}")]
     Unexpected(String),
 
-    #[error("email already exists: {0}")]
-    EmailAlreadyExists(Email),
+    #[error("email already exists")]
+    EmailAlreadyExists,
 }
