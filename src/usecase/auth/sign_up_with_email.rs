@@ -40,7 +40,7 @@ impl<R: UserRepository> SignUpWithEmailUsecase<R> {
         let email = Email::new(input.email)?;
 
         if self.user_repository.find_by_email(&email).await?.is_some() {
-            return Err(DomainError::EmailAlreadyExists(email));
+            return Err(DomainError::EmailAlreadyExists);
         }
 
         let password_hash = hash_password(&input.password)?;
@@ -65,7 +65,7 @@ mod tests {
     use super::*;
     use crate::domain::user::repository::MockUserRepository;
     use crate::domain::user::user_auth::UserAuth;
-    use crate::domain::user::vo::{Email, PasswordHash};
+    use crate::domain::user::vo::Email;
     use crate::usecase::auth::sign_up_with_email::SignUpWithEmailInput;
     use std::sync::Arc;
 

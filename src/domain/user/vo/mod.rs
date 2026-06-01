@@ -6,6 +6,8 @@ pub mod user_id;
 pub mod user_name;
 
 pub use email::Email;
+pub use oauth_provider::OAuthProvider;
 pub use password_hash::PasswordHash;
+pub use provider_user_id::ProviderUserId;
 pub use user_id::UserId;
 pub use user_name::UserName;
