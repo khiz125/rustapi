@@ -1,8 +1,7 @@
 use crate::domain::error::DomainError;
-use crate::domain::user::User;
+use crate::domain::user::NewUser;
 use crate::domain::user::repository::UserRepository;
-use crate::domain::user::user_auth::UserAuth;
-use crate::domain::user::vo::{Email, UserId, UserName};
+use crate::domain::user::vo::{Email, UserName};
 use crate::usecase::auth::password_crypto::hash_password;
 use crate::usecase::auth::token::issue_token;
 
@@ -44,13 +43,9 @@ impl<R: UserRepository> SignUpWithEmailUsecase<R> {
         }
 
         let password_hash = hash_password(&input.password)?;
+        let new_user = NewUser::new_password(name, email, password_hash);
 
-        let dummy_id = UserId::new(0);
-        let auth = UserAuth::new_password(dummy_id, email, password_hash);
-        let user = User::new(dummy_id, name, auth);
-
-        let created = self.user_repository.create(user).await?;
-
+        let created = self.user_repository.create(new_user).await?;
         let token = issue_token(created.id.value(), &self.jwt_secret)?;
 
         Ok(SignUpWithEmailOutput {
@@ -63,9 +58,10 @@ impl<R: UserRepository> SignUpWithEmailUsecase<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::user::User;
     use crate::domain::user::repository::MockUserRepository;
     use crate::domain::user::user_auth::UserAuth;
-    use crate::domain::user::vo::Email;
+    use crate::domain::user::vo::{Email, UserId};
     use crate::usecase::auth::sign_up_with_email::SignUpWithEmailInput;
     use std::sync::Arc;
 
@@ -73,20 +69,35 @@ mod tests {
         SignUpWithEmailUsecase::new(Arc::new(mock), "test_secret".to_string())
     }
 
-    fn make_existing_user() -> User {
+    fn to_user(new_user: NewUser) -> User {
         let user_id = UserId::new(1);
+        User {
+            id: user_id,
+            name: new_user.name,
+            auth: UserAuth {
+                user_id,
+                auth_method: new_user.auth.method,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }
+    }
+
+    fn make_existing_user() -> User {
         let name = UserName::new("testname".to_string()).unwrap();
         let email = Email::new("test@example.com".to_string()).unwrap();
         let password_hash = hash_password("hash").unwrap();
-        let auth = UserAuth::new_password(user_id, email, password_hash);
-        User::new(user_id, name, auth)
+        to_user(NewUser::new_password(name, email, password_hash))
     }
 
     #[tokio::test]
     async fn success() {
         let mut mock = MockUserRepository::new();
         mock.expect_find_by_email().returning(|_| Ok(None));
-        mock.expect_create().returning(|user| Ok(user));
+        mock.expect_create()
+            .returning(|new_user| Ok(to_user(new_user)));
 
         let result = make_usecase(mock)
             .execute(SignUpWithEmailInput {

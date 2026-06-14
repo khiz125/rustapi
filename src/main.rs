@@ -1,10 +1,10 @@
 mod domain;
-mod infrastructure;
+mod infra;
 mod middleware;
 mod presentation;
 mod usecase;
 
-use infrastructure::user::repository::PgUserRepository;
+use infra::user::repository::PgUserRepository;
 use presentation::router::create_router;
 use presentation::state::AppState;
 use usecase::auth::login_with_email::LoginWithEmailUsecase;
@@ -14,7 +14,7 @@ use usecase::user::update_password::UpdatePasswordUsecase;
 use std::env;
 use std::sync::Arc;
 
-use crate::infrastructure::database::connection::create_pool;
+use crate::infra::database::connection::create_pool;
 use crate::usecase::user::update_name::UpdateNameUsecase;
 
 #[tokio::main]

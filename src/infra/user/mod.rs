@@ -1,2 +1,2 @@
 pub mod repository;
-mod user_row;
+pub mod user_row;

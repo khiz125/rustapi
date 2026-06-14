@@ -1,10 +1,10 @@
 use crate::domain::error::DomainError;
-use crate::domain::user::User;
 use crate::domain::user::vo::UserName;
 use crate::domain::user::vo::email::Email;
 use crate::domain::user::vo::oauth_provider::OAuthProvider;
 use crate::domain::user::vo::provider_user_id::ProviderUserId;
 use crate::domain::user::vo::{password_hash::PasswordHash, user_id::UserId};
+use crate::domain::user::{NewUser, User};
 
 #[cfg(test)]
 use mockall::automock;
@@ -19,7 +19,7 @@ pub trait UserRepository: Send + Sync {
         provider: &OAuthProvider,
         provider_user_id: &ProviderUserId,
     ) -> Result<Option<User>, DomainError>;
-    async fn create(&self, user: User) -> Result<User, DomainError>;
+    async fn create(&self, new_user: NewUser) -> Result<User, DomainError>;
     async fn update_name(&self, user_id: UserId, new_name: UserName) -> Result<(), DomainError>;
     async fn update_password(
         &self,

@@ -1,6 +1,5 @@
 use super::user_row::{AuthRow, UserRow};
 use crate::domain::error::DomainError;
-use crate::domain::user::User;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::user_auth::AuthMethod;
 use crate::domain::user::vo::UserName;
@@ -8,6 +7,7 @@ use crate::domain::user::vo::{
     email::Email, oauth_provider::OAuthProvider, password_hash::PasswordHash,
     provider_user_id::ProviderUserId, user_id::UserId,
 };
+use crate::domain::user::{NewUser, User};
 
 use async_trait::async_trait;
 use sqlx::PgPool;
@@ -171,7 +171,7 @@ impl UserRepository for PgUserRepository {
 
         Ok(Some(user_row.into_domain()?))
     }
-    async fn create(&self, user: User) -> Result<User, DomainError> {
+    async fn create(&self, new_user: NewUser) -> Result<User, DomainError> {
         let mut tx = self
             .pool
             .begin()
@@ -184,13 +184,13 @@ impl UserRepository for PgUserRepository {
               VALUES ($1)
               RETURNING id, name, created_at, updated_at
             "#,
-            user.name.value()
+            new_user.name.value()
         )
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| DomainError::Unexpected(e.to_string()))?;
 
-        let auth_row: AuthRow = match &user.auth.auth_method {
+        let auth_row: AuthRow = match &new_user.auth.method {
             AuthMethod::Password {
                 email,
                 password_hash,
