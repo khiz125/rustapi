@@ -4,11 +4,13 @@ mod middleware;
 mod presentation;
 mod usecase;
 
+use infra::oauth::google::GoogleOAuthClient;
 use infra::user::repository::PgUserRepository;
 use presentation::router::create_router;
 use presentation::state::AppState;
 use usecase::auth::login_with_email::LoginWithEmailUsecase;
 use usecase::auth::sign_up_with_email::SignUpWithEmailUsecase;
+use usecase::auth::sign_up_with_oauth::SignUpWithOAuthUsecase;
 use usecase::user::update_password::UpdatePasswordUsecase;
 
 use std::env;
@@ -24,6 +26,17 @@ async fn main() {
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    let google_client_id = env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID must be set");
+    let google_client_secret =
+        env::var("GOOGLE_CLIENT_SECRET").expect("GOOGLE_CLIENT_SECRET must be set");
+    let google_redirect_uri =
+        env::var("GOOGLE_REDIRECT_URI").expect("GOOGLE_REDIRECT_URI must be set");
+
+    let google_oauth_client = Arc::new(GoogleOAuthClient::new(
+        google_client_id,
+        google_client_secret,
+        google_redirect_uri,
+    ));
 
     let pool = create_pool(&database_url)
         .await
@@ -41,6 +54,11 @@ async fn main() {
         )),
         update_password: Arc::new(UpdatePasswordUsecase::new(user_repository.clone())),
         update_name: Arc::new(UpdateNameUsecase::new(user_repository.clone())),
+        sign_up_with_oauth: Arc::new(SignUpWithOAuthUsecase::new(
+            user_repository.clone(),
+            jwt_secret.clone(),
+        )),
+        google_oauth_client,
     };
 
     let app = create_router(state);

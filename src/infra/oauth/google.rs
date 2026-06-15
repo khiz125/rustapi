@@ -31,7 +31,7 @@ impl GoogleOAuthClient {
         }
     }
 
-    pub fn authorization_uri(&self) -> String {
+    pub fn authorization_url(&self) -> String {
         format!(
             "{}?client_id={}&redirect_uri={}&response_type=code&scope={}&access_type=offline",
             GOOGLE_AUTH_URL, self.client_id, self.redirect_uri, GOOGLE_SCOPE,
