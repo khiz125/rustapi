@@ -22,8 +22,18 @@ CREATE TABLE user_auth (
   CONSTRAINT uq_user_auth_provider UNIQUE (provider, provider_user_id),
 
   CHECK (
-    (kind = 'password_hash' AND email IS NOT NULL AND password_hash IS NOT NULL AND provider IS NULL AND provider_user_id IS NULL)
+    (
+      kind = 'password_hash' 
+      AND email IS NOT NULL 
+      AND password_hash IS NOT NULL 
+      AND provider IS NULL 
+      AND provider_user_id IS NULL
+    )
     OR
-    (kind = 'oauth' AND provider IS NOT NULL AND provider_user_id IS NOT NULL AND email IS NULL AND password_hash IS NULL)
+    (
+      kind = 'oauth' AND provider IS NOT NULL 
+      AND provider_user_id IS NOT NULL 
+      AND password_hash IS NULL
+    )
   )
 );

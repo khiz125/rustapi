@@ -15,6 +15,7 @@ pub enum AuthMethod {
         password_hash: PasswordHash,
     },
     OAuth {
+        email: Option<Email>,
         provider: OAuthProvider,
         provider_user_id: ProviderUserId,
     },
@@ -44,6 +45,7 @@ impl UserAuth {
 
     pub fn new_oauth(
         user_id: UserId,
+        email: Option<Email>,
         provider: OAuthProvider,
         provider_user_id: ProviderUserId,
     ) -> Self {
@@ -51,6 +53,7 @@ impl UserAuth {
         Self {
             user_id,
             auth_method: AuthMethod::OAuth {
+                email,
                 provider,
                 provider_user_id,
             },
@@ -62,7 +65,7 @@ impl UserAuth {
     pub fn email(&self) -> Option<&Email> {
         match &self.auth_method {
             AuthMethod::Password { email, .. } => Some(email),
-            AuthMethod::OAuth { .. } => None,
+            AuthMethod::OAuth { email, .. } => email.as_ref(),
         }
     }
 

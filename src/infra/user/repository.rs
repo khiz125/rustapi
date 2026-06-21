@@ -1,7 +1,7 @@
 use super::user_row::{AuthRow, UserRow};
 use crate::domain::error::DomainError;
 use crate::domain::user::repository::UserRepository;
-use crate::domain::user::user_auth::AuthMethod;
+use crate::domain::user::user_auth::{AuthMethod, UserAuth};
 use crate::domain::user::vo::UserName;
 use crate::domain::user::vo::{
     email::Email, oauth_provider::OAuthProvider, password_hash::PasswordHash,
@@ -230,13 +230,14 @@ impl UserRepository for PgUserRepository {
             }
 
             AuthMethod::OAuth {
+                email,
                 provider,
                 provider_user_id,
             } => {
                 let row = sqlx::query!(
                     r#"
-                INSERT INTO user_auth (user_id, kind, provider, provider_user_id)
-                VALUES ($1, 'oauth', $2, $3)
+                INSERT INTO user_auth (user_id, kind, email, provider, provider_user_id)
+                VALUES ($1, 'oauth', $2, $3, $4)
                     RETURNING
                       user_id,
                       kind::text AS "kind!: String",
@@ -248,6 +249,7 @@ impl UserRepository for PgUserRepository {
                       updated_at
                 "#,
                     user_row.id,
+                    email.as_ref().map(|e| e.value()),
                     provider.as_str(),
                     provider_user_id.value()
                 )
@@ -256,6 +258,7 @@ impl UserRepository for PgUserRepository {
                 .map_err(|e| DomainError::Unexpected(e.to_string()))?;
 
                 AuthRow::OAuth {
+                    email: row.email,
                     provider: OAuthProvider::from_str(
                         &row.provider
                             .ok_or_else(|| DomainError::Unexpected("provider is null".into()))?,
@@ -285,26 +288,30 @@ impl UserRepository for PgUserRepository {
         user_row_dto.into_domain()
     }
 
-    async fn update_password(
-        &self,
-        user_id: UserId,
-        new_password_hash: PasswordHash,
-    ) -> Result<(), DomainError> {
-        sqlx::query!(
-            r#"
-            UPDATE user_auth
-            SET password_hash = $1,
-            updated_at = now()
-            WHERE user_id = $2
-            AND kind = 'password_hash'
-            "#,
-            new_password_hash.value(),
-            user_id.value()
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
-
+    async fn save_auth(&self, user_auth: &UserAuth) -> Result<(), DomainError> {
+        match &user_auth.auth_method {
+            AuthMethod::Password { password_hash, .. } => {
+                sqlx::query!(
+                    r#"
+                UPDATE user_auth
+                SET password_hash = $1,
+                    updated_at = $2
+                WHERE user_id = $3
+                "#,
+                    password_hash.value(),
+                    user_auth.updated_at,
+                    user_auth.user_id.value()
+                )
+                .execute(&self.pool)
+                .await
+                .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+            }
+            AuthMethod::OAuth { .. } => {
+                return Err(DomainError::Unexpected(
+                    "cannot save OAuth auth medhod".into(),
+                ));
+            }
+        }
         Ok(())
     }
 

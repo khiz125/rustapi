@@ -1,4 +1,4 @@
-use crate::domain::user::vo::{Email, UserName};
+use crate::domain::user::vo::UserName;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DomainError {

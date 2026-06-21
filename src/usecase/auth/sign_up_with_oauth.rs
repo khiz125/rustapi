@@ -1,15 +1,16 @@
 use crate::domain::error::DomainError;
 use crate::domain::user::NewUser;
 use crate::domain::user::repository::UserRepository;
-use crate::domain::user::vo::{OAuthProvider, ProviderUserId, UserName, provider_user_id};
+use crate::domain::user::vo::{Email, OAuthProvider, ProviderUserId, UserName};
 use crate::usecase::auth::token::issue_token;
-use std::iter::Product;
+
 use std::sync::Arc;
 
 pub struct SignUpWithOAuthInput {
     pub provider: OAuthProvider,
     pub provider_user_id: String,
     pub name: String,
+    pub email: Option<String>,
 }
 
 pub struct SignUpWithOAuthOutput {
@@ -50,7 +51,8 @@ impl<R: UserRepository> SignUpWithOAuthUsecase<R> {
         }
 
         let name = UserName::new(input.name)?;
-        let new_user = NewUser::new_oauth(name, input.provider, provider_user_id);
+        let email = input.email.map(Email::new).transpose()?;
+        let new_user = NewUser::new_oauth(name, email, input.provider, provider_user_id);
         let created = self.user_repository.create(new_user).await?;
         let token = issue_token(created.id.value(), &self.jwt_secret)?;
 
@@ -68,7 +70,7 @@ mod tests {
     use crate::domain::user::User;
     use crate::domain::user::vo::UserId;
     use crate::domain::user::{repository::MockUserRepository, user_auth::UserAuth};
-    use std::result;
+
     use std::sync::Arc;
 
     fn make_usecase(mock: MockUserRepository) -> SignUpWithOAuthUsecase<MockUserRepository> {
@@ -93,8 +95,10 @@ mod tests {
 
     fn make_existing_user() -> User {
         let name = UserName::new("testuser").unwrap();
+        let email = Email::new("test@example.com".to_string()).unwrap();
         let provider_user_id = ProviderUserId::new("google_123".to_string());
-        let new_user = NewUser::new_oauth(name, OAuthProvider::Google, provider_user_id);
+        let new_user =
+            NewUser::new_oauth(name, Some(email), OAuthProvider::Google, provider_user_id);
         to_user(new_user, 1)
     }
 
@@ -111,6 +115,7 @@ mod tests {
                 provider: OAuthProvider::Google,
                 provider_user_id: "google_456".to_string(),
                 name: "testuser".to_string(),
+                email: Some("test@example.com".to_string()),
             })
             .await
             .unwrap();
@@ -131,6 +136,7 @@ mod tests {
                 provider: OAuthProvider::Google,
                 provider_user_id: "google_123".to_lowercase(),
                 name: "testuser".to_string(),
+                email: Some("test@example.com".to_string()),
             })
             .await
             .unwrap();
@@ -150,6 +156,7 @@ mod tests {
                 provider: OAuthProvider::Google,
                 provider_user_id: "google_456".to_string(),
                 name: "".to_string(),
+                email: Some("test@example.com".to_string()),
             })
             .await;
 

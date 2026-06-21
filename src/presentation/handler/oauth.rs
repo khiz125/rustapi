@@ -41,6 +41,7 @@ pub async fn google_callback<R: UserRepository + Clone>(
             provider: OAuthProvider::Google,
             provider_user_id: user_info.sub,
             name: user_info.name.unwrap_or_else(|| "Google user".to_string()),
+            email: user_info.email,
         })
         .await?;
 

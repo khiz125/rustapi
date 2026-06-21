@@ -27,6 +27,7 @@ impl NewUser {
 
     pub fn new_oauth(
         name: UserName,
+        email: Option<Email>,
         provider: OAuthProvider,
         provider_user_id: ProviderUserId,
     ) -> Self {
@@ -34,6 +35,7 @@ impl NewUser {
             name,
             auth: NewUserAuth {
                 method: AuthMethod::OAuth {
+                    email,
                     provider,
                     provider_user_id,
                 },

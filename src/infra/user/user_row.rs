@@ -21,6 +21,7 @@ pub(super) enum AuthRow {
         updated_at: UtcDateTime,
     },
     OAuth {
+        email: Option<String>,
         provider: OAuthProvider,
         provider_user_id: String,
         created_at: UtcDateTime,
@@ -64,14 +65,20 @@ impl UserRow {
                 )
             }
             AuthRow::OAuth {
+                email,
                 provider,
                 provider_user_id,
                 created_at,
                 updated_at,
             } => {
                 let provider_user_id = ProviderUserId::new(provider_user_id);
+                let email = email
+                    .map(Email::new)
+                    .transpose()
+                    .map_err(|e| DomainError::Unexpected(e.to_string()))?;
                 (
                     AuthMethod::OAuth {
+                        email,
                         provider,
                         provider_user_id,
                     },
@@ -115,6 +122,7 @@ impl AuthRow {
                 updated_at,
             }),
             "oauth" => Ok(AuthRow::OAuth {
+                email,
                 provider: OAuthProvider::from_str(
                     &provider.ok_or_else(|| DomainError::Unexpected("provider is null".into()))?,
                 )

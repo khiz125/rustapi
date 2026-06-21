@@ -23,7 +23,7 @@ impl<R: UserRepository> UpdatePasswordUsecase<R> {
     pub async fn execute(&self, input: UpdatePasswordInput) -> Result<(), DomainError> {
         let user_id = UserId::new(input.user_id);
 
-        let user = self
+        let mut user = self
             .user_repository
             .find_by_id(user_id)
             .await?
@@ -38,9 +38,9 @@ impl<R: UserRepository> UpdatePasswordUsecase<R> {
 
         let new_hash = hash_password(&input.new_password)?;
 
-        self.user_repository
-            .update_password(user_id, new_hash)
-            .await?;
+        user.auth.change_password(new_hash)?;
+
+        self.user_repository.save_auth(&user.auth).await?;
 
         Ok(())
     }
@@ -71,9 +71,15 @@ mod tests {
 
     fn make_oauth_user() -> User {
         let user_id = UserId::new(1);
+        let email = Email::new("test@example.com".to_string()).unwrap();
         let name = UserName::new("oauth_user").unwrap();
         let provider_user_id = ProviderUserId::new("google_user".to_string());
-        let auth = UserAuth::new_oauth(user_id, OAuthProvider::Google, provider_user_id);
+        let auth = UserAuth::new_oauth(
+            user_id,
+            Some(email),
+            OAuthProvider::Google,
+            provider_user_id,
+        );
         User::new(user_id, name, auth)
     }
 
@@ -82,7 +88,7 @@ mod tests {
         let mut mock = MockUserRepository::new();
         mock.expect_find_by_id()
             .returning(|_| Ok(Some(make_user("password123"))));
-        mock.expect_update_password().returning(|_, _| Ok(()));
+        mock.expect_save_auth().returning(|_| Ok(()));
 
         let result = make_usecase(mock)
             .execute(UpdatePasswordInput {
