@@ -5,10 +5,12 @@ mod presentation;
 mod usecase;
 
 use infra::oauth::google::GoogleOAuthClient;
+use infra::refresh_token::repository::PgRefreshTokenRepository;
 use infra::user::repository::PgUserRepository;
 use presentation::router::create_router;
 use presentation::state::AppState;
 use usecase::auth::login_with_email::LoginWithEmailUsecase;
+use usecase::auth::refresh_token::RefreshTokenUsecase;
 use usecase::auth::sign_up_with_email::SignUpWithEmailUsecase;
 use usecase::auth::sign_up_with_oauth::SignUpWithOAuthUsecase;
 use usecase::user::update_password::UpdatePasswordUsecase;
@@ -17,6 +19,7 @@ use std::env;
 use std::sync::Arc;
 
 use crate::infra::database::connection::create_pool;
+use crate::usecase::auth::sign_up_with_mobile_device::SignUpWithMobileDeviceUsecase;
 use crate::usecase::user::update_name::UpdateNameUsecase;
 
 #[tokio::main]
@@ -42,7 +45,8 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
-    let user_repository = Arc::new(PgUserRepository::new(pool));
+    let user_repository = Arc::new(PgUserRepository::new(pool.clone()));
+    let refresh_token_repository = Arc::new(PgRefreshTokenRepository::new(pool));
     let state = AppState {
         sign_up: Arc::new(SignUpWithEmailUsecase::new(
             user_repository.clone(),
@@ -50,12 +54,23 @@ async fn main() {
         )),
         login: Arc::new(LoginWithEmailUsecase::new(
             user_repository.clone(),
+            refresh_token_repository.clone(),
+            jwt_secret.clone(),
+        )),
+        refresh_token: Arc::new(RefreshTokenUsecase::new(
+            user_repository.clone(),
+            refresh_token_repository.clone(),
             jwt_secret.clone(),
         )),
         update_password: Arc::new(UpdatePasswordUsecase::new(user_repository.clone())),
         update_name: Arc::new(UpdateNameUsecase::new(user_repository.clone())),
         sign_up_with_oauth: Arc::new(SignUpWithOAuthUsecase::new(
             user_repository.clone(),
+            jwt_secret.clone(),
+        )),
+        sign_up_with_mobile_device: Arc::new(SignUpWithMobileDeviceUsecase::new(
+            user_repository.clone(),
+            refresh_token_repository.clone(),
             jwt_secret.clone(),
         )),
         google_oauth_client,

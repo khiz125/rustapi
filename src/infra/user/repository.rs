@@ -4,7 +4,7 @@ use crate::domain::user::repository::UserRepository;
 use crate::domain::user::user_auth::{AuthMethod, UserAuth};
 use crate::domain::user::vo::UserName;
 use crate::domain::user::vo::{
-    email::Email, oauth_provider::OAuthProvider, password_hash::PasswordHash,
+    device_id::DeviceId, email::Email, oauth_provider::OAuthProvider,
     provider_user_id::ProviderUserId, user_id::UserId,
 };
 use crate::domain::user::{NewUser, User};
@@ -171,6 +171,54 @@ impl UserRepository for PgUserRepository {
 
         Ok(Some(user_row.into_domain()?))
     }
+    async fn find_by_device_id(&self, device_id: &DeviceId) -> Result<Option<User>, DomainError> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                u.id,
+                u.name,
+                u.created_at,
+                u.updated_at,
+                a.kind::text AS "kind!: String",
+                a.email,
+                a.password_hash,
+                a.provider,
+                a.provider_user_id,
+                a.created_at AS auth_created_at,
+                a.updated_at AS auth_updated_at
+            FROM users u
+            INNER JOIN user_auth a ON a.user_id = u.id
+            WHERE a.kind = 'mobile_device'
+            AND a.provider_user_id = $1
+            "#,
+            device_id.value()
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+
+        let user_row = UserRow {
+            id: row.id,
+            name: row.name,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            kind: AuthRow::from_row(
+                &row.kind,
+                row.email,
+                row.password_hash,
+                row.provider,
+                row.provider_user_id,
+                row.auth_created_at,
+                row.auth_updated_at,
+            )?,
+        };
+
+        Ok(Some(user_row.into_domain()?))
+    }
     async fn create(&self, new_user: NewUser) -> Result<User, DomainError> {
         let mut tx = self
             .pool
@@ -271,6 +319,36 @@ impl UserRepository for PgUserRepository {
                     updated_at: row.updated_at,
                 }
             }
+            AuthMethod::MobileDevice { device_id } => {
+                let row = sqlx::query!(
+                    r#"
+                    INSERT INTO user_auth (user_id, kind, provider_user_id)
+                    VALUES ($1, 'mobile_device', $2)
+                    RETURNING
+                        user_id,
+                        kind::text AS "kind!: String",
+                        email,
+                        password_hash,
+                        provider,
+                        provider_user_id,
+                        created_at,
+                        updated_at
+                    "#,
+                    user_row.id,
+                    device_id.value()
+                )
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+
+                AuthRow::MobileDevice {
+                    device_id: row
+                        .provider_user_id
+                        .ok_or_else(|| DomainError::Unexpected("device_id is null".into()))?,
+                    created_at: row.created_at,
+                    updated_at: row.updated_at,
+                }
+            }
         };
 
         tx.commit()
@@ -308,7 +386,12 @@ impl UserRepository for PgUserRepository {
             }
             AuthMethod::OAuth { .. } => {
                 return Err(DomainError::Unexpected(
-                    "cannot save OAuth auth medhod".into(),
+                    "cannot save OAuth auth medthod".into(),
+                ));
+            }
+            AuthMethod::MobileDevice { .. } => {
+                return Err(DomainError::Unexpected(
+                    "cannot save MobileDevice auth method".into(),
                 ));
             }
         }

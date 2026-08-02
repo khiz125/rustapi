@@ -1,0 +1,11 @@
+-- 20260725075115_update_user_auth_check.sql
+
+ALTER TABLE user_auth DROP CONSTRAINT user_auth_check;
+
+ALTER TABLE user_auth ADD CONSTRAINT user_auth_check CHECK (
+  (kind = 'password_hash' AND email IS NOT NULL AND password_hash IS NOT NULL AND provider IS NULL AND provider_user_id IS NULL)
+  OR
+  (kind = 'oauth' AND provider IS NOT NULL AND provider_user_id IS NOT NULL AND password_hash IS NULL)
+  OR
+  (kind = 'mobile_device' AND email IS NULL AND password_hash IS NULL AND provider IS NULL AND provider_user_id IS NULL)
+);

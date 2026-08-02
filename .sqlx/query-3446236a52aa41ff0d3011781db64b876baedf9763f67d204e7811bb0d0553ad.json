@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    INSERT INTO user_auth (user_id, kind, provider_user_id)\n                    VALUES ($1, 'mobile_device', $2)\n                    RETURNING\n                        user_id,\n                        kind::text AS \"kind!: String\",\n                        email,\n                        password_hash,\n                        provider,\n                        provider_user_id,\n                        created_at,\n                        updated_at\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "kind!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "provider",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "provider_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3446236a52aa41ff0d3011781db64b876baedf9763f67d204e7811bb0d0553ad"
+}

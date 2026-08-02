@@ -4,6 +4,7 @@ use crate::domain::types::UtcDateTime;
 use crate::domain::user::User;
 use crate::domain::user::user_auth::{AuthMethod, UserAuth};
 
+use crate::domain::user::vo::device_id::DeviceId;
 use crate::domain::user::vo::email::Email;
 use crate::domain::user::vo::oauth_provider::OAuthProvider;
 use crate::domain::user::vo::password_hash::PasswordHash;
@@ -24,6 +25,11 @@ pub(super) enum AuthRow {
         email: Option<String>,
         provider: OAuthProvider,
         provider_user_id: String,
+        created_at: UtcDateTime,
+        updated_at: UtcDateTime,
+    },
+    MobileDevice {
+        device_id: String,
         created_at: UtcDateTime,
         updated_at: UtcDateTime,
     },
@@ -86,6 +92,18 @@ impl UserRow {
                     updated_at,
                 )
             }
+            AuthRow::MobileDevice {
+                device_id,
+                created_at,
+                updated_at,
+            } => {
+                let device_id = DeviceId::new(device_id);
+                (
+                    AuthMethod::MobileDevice { device_id },
+                    created_at,
+                    updated_at,
+                )
+            }
         };
 
         Ok(User {
@@ -129,6 +147,12 @@ impl AuthRow {
                 .ok_or_else(|| DomainError::Unexpected("invalid OAuth provider".into()))?,
                 provider_user_id: provider_user_id
                     .ok_or_else(|| DomainError::Unexpected("provider_user_id is null".into()))?,
+                created_at,
+                updated_at,
+            }),
+            "mobile_device" => Ok(AuthRow::MobileDevice {
+                device_id: provider_user_id
+                    .ok_or_else(|| DomainError::Unexpected("device_id is null".into()))?,
                 created_at,
                 updated_at,
             }),

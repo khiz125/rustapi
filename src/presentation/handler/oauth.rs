@@ -1,3 +1,4 @@
+use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::OAuthProvider;
 use crate::presentation::error::AppError;
@@ -20,16 +21,22 @@ pub struct OAuthResponse {
     pub is_new_user: bool,
 }
 
-pub async fn google_redirect<R: UserRepository + Clone>(
-    State(state): State<AppState<R>>,
-) -> impl IntoResponse {
+pub async fn google_redirect<R, RT>(State(state): State<AppState<R, RT>>) -> impl IntoResponse
+where
+    R: UserRepository + Clone,
+    RT: RefreshTokenRepository + Clone,
+{
     Redirect::temporary(&state.google_oauth_client.authorization_url())
 }
 
-pub async fn google_callback<R: UserRepository + Clone>(
-    State(state): State<AppState<R>>,
+pub async fn google_callback<R, RT>(
+    State(state): State<AppState<R, RT>>,
     Query(query): Query<CallbackQuery>,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<impl IntoResponse, AppError>
+where
+    R: UserRepository + Clone,
+    RT: RefreshTokenRepository + Clone,
+{
     let user_info = state
         .google_oauth_client
         .fetch_user_info(&query.code)

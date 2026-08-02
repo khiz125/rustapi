@@ -1,6 +1,7 @@
 use crate::domain::error::DomainError;
 use crate::domain::user::user_auth::UserAuth;
 use crate::domain::user::vo::UserName;
+use crate::domain::user::vo::device_id::DeviceId;
 use crate::domain::user::vo::email::Email;
 use crate::domain::user::vo::oauth_provider::OAuthProvider;
 use crate::domain::user::vo::provider_user_id::ProviderUserId;
@@ -14,6 +15,7 @@ use mockall::automock;
 #[async_trait::async_trait]
 pub trait UserRepository: Send + Sync {
     async fn find_by_id(&self, id: UserId) -> Result<Option<User>, DomainError>;
+    async fn find_by_device_id(&self, device_id: &DeviceId) -> Result<Option<User>, DomainError>;
     async fn find_by_email(&self, email: &Email) -> Result<Option<User>, DomainError>;
     async fn find_by_provider(
         &self,

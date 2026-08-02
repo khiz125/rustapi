@@ -1,5 +1,7 @@
 use crate::domain::user::user_auth::AuthMethod;
-use crate::domain::user::vo::{Email, OAuthProvider, PasswordHash, ProviderUserId, UserName};
+use crate::domain::user::vo::{
+    DeviceId, Email, OAuthProvider, PasswordHash, ProviderUserId, UserName,
+};
 
 #[derive(Debug, Clone)]
 pub struct NewUser {
@@ -39,6 +41,15 @@ impl NewUser {
                     provider,
                     provider_user_id,
                 },
+            },
+        }
+    }
+
+    pub fn new_mobile_device(name: UserName, device_id: DeviceId) -> Self {
+        Self {
+            name,
+            auth: NewUserAuth {
+                method: AuthMethod::MobileDevice { device_id },
             },
         }
     }

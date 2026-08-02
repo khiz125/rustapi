@@ -32,6 +32,7 @@ impl<R: UserRepository> UpdatePasswordUsecase<R> {
         let current_hash = match &user.auth.auth_method {
             AuthMethod::Password { password_hash, .. } => password_hash.value().to_string(),
             AuthMethod::OAuth { .. } => return Err(DomainError::NotPasswordAuthUser),
+            AuthMethod::MobileDevice { .. } => return Err(DomainError::NotPasswordAuthUser),
         };
 
         verify_password(&input.current_password, &current_hash)?;

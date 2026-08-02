@@ -1,10 +1,10 @@
-use crate::domain::{
-    error::DomainError,
-    user::vo::{
-        email::Email, oauth_provider::OAuthProvider, password_hash::PasswordHash,
-        provider_user_id::ProviderUserId, user_id::UserId,
-    },
-};
+use crate::domain::error::DomainError;
+use crate::domain::user::vo::device_id::DeviceId;
+use crate::domain::user::vo::email::Email;
+use crate::domain::user::vo::oauth_provider::OAuthProvider;
+use crate::domain::user::vo::password_hash::PasswordHash;
+use crate::domain::user::vo::provider_user_id::ProviderUserId;
+use crate::domain::user::vo::user_id::UserId;
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -18,6 +18,9 @@ pub enum AuthMethod {
         email: Option<Email>,
         provider: OAuthProvider,
         provider_user_id: ProviderUserId,
+    },
+    MobileDevice {
+        device_id: DeviceId,
     },
 }
 
@@ -62,10 +65,21 @@ impl UserAuth {
         }
     }
 
+    pub fn new_mobile_device(user_id: UserId, device_id: DeviceId) -> Self {
+        let now = Utc::now();
+        Self {
+            user_id,
+            auth_method: AuthMethod::MobileDevice { device_id },
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
     pub fn email(&self) -> Option<&Email> {
         match &self.auth_method {
             AuthMethod::Password { email, .. } => Some(email),
             AuthMethod::OAuth { email, .. } => email.as_ref(),
+            AuthMethod::MobileDevice { .. } => None,
         }
     }
 
@@ -80,6 +94,7 @@ impl UserAuth {
                 Ok(())
             }
             AuthMethod::OAuth { .. } => Err(DomainError::NotPasswordAuthUser),
+            AuthMethod::MobileDevice { .. } => Err(DomainError::NotPasswordAuthUser),
         }
     }
 }

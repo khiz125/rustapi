@@ -1,4 +1,5 @@
 use crate::domain::error::DomainError;
+use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::repository::UserRepository;
 use crate::middleware::auth::AuthUser;
 use crate::presentation::error::AppError;
@@ -23,11 +24,15 @@ pub struct UpdateNameRequest {
     pub new_name: String,
 }
 
-pub async fn update_password<R: UserRepository + Clone>(
-    State(state): State<AppState<R>>,
+pub async fn update_password<R, RT>(
+    State(state): State<AppState<R, RT>>,
     AuthUser(claims): AuthUser,
     body: Result<Json<UpdatePasswordRequest>, JsonRejection>,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<impl IntoResponse, AppError>
+where
+    R: UserRepository + Clone,
+    RT: RefreshTokenRepository + Clone,
+{
     let Json(body) = body.map_err(|e| DomainError::InvalidRequest(e.to_string()))?;
 
     state
@@ -42,11 +47,15 @@ pub async fn update_password<R: UserRepository + Clone>(
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub async fn update_name<R: UserRepository + Clone>(
-    State(state): State<AppState<R>>,
+pub async fn update_name<R, RT>(
+    State(state): State<AppState<R, RT>>,
     AuthUser(claims): AuthUser,
     body: Result<Json<UpdateNameRequest>, JsonRejection>,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<impl IntoResponse, AppError>
+where
+    R: UserRepository + Clone,
+    RT: RefreshTokenRepository + Clone,
+{
     let Json(body) = body.map_err(|e| DomainError::InvalidRequest(e.to_string()))?;
 
     state
