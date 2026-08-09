@@ -12,7 +12,8 @@ where
 {
     Router::new()
         .route("/auth/signup", post(auth::sign_up::<R, RT>))
-        .route("/auth/logout", post(auth::logout))
+        .route("/mobile/auth/logout", post(auth::mobile_logout::<R, RT>))
+        .route("/web/auth/logout", post(auth::web_logout::<R, RT>))
         .route("/auth/google", get(oauth::google_redirect::<R, RT>))
         .route(
             "/auth/google/callback",

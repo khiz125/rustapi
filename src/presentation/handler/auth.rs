@@ -4,6 +4,7 @@ use crate::domain::user::repository::UserRepository;
 use crate::presentation::error::AppError;
 use crate::presentation::state::AppState;
 use crate::usecase::auth::login_with_email::LoginWithEmailInput;
+use crate::usecase::auth::logout::LogoutInput;
 use crate::usecase::auth::refresh_token::RefreshTokenInput;
 use crate::usecase::auth::sign_up_with_email::SignUpWithEmailInput;
 use axum::Json;
@@ -50,6 +51,11 @@ pub struct RefreshResponse {
     pub refresh_token: String,
 }
 
+#[derive(Deserialize)]
+pub struct LogoutRequest {
+    pub refresh_token: String,
+}
+
 pub async fn web_login<R, RT>(
     State(state): State<AppState<R, RT>>,
     jar: CookieJar,
@@ -82,6 +88,50 @@ where
             access_token: output.access_token,
         }),
     ))
+}
+
+pub async fn web_logout<R, RT>(
+    State(state): State<AppState<R, RT>>,
+    jar: CookieJar,
+) -> Result<impl IntoResponse, AppError>
+where
+    R: UserRepository + Clone + Send + Sync + 'static,
+    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
+{
+    let refresh_token = jar
+        .get("refresh_token")
+        .map(|c| c.value().to_string())
+        .ok_or(DomainError::Unauthorized)?;
+
+    state.logout.execute(LogoutInput { refresh_token }).await?;
+
+    let cookie = Cookie::build(("refresh_token", ""))
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Strict)
+        .path("/web/auth/refresh")
+        .max_age(time::Duration::seconds(0))
+        .build();
+
+    Ok((jar.remove(cookie), StatusCode::NO_CONTENT))
+}
+
+pub async fn mobile_logout<R, RT>(
+    State(state): State<AppState<R, RT>>,
+    Json(body): Json<LogoutRequest>,
+) -> Result<impl IntoResponse, AppError>
+where
+    R: UserRepository + Clone + Send + Sync + 'static,
+    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
+{
+    state
+        .logout
+        .execute(LogoutInput {
+            refresh_token: body.refresh_token,
+        })
+        .await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn mobile_refresh<R, RT>(
@@ -165,8 +215,4 @@ where
             token: output.token,
         }),
     ))
-}
-
-pub async fn logout() -> impl IntoResponse {
-    StatusCode::NO_CONTENT
 }

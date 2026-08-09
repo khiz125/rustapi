@@ -2,6 +2,7 @@ use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::repository::UserRepository;
 use crate::infra::oauth::google::GoogleOAuthClient;
 use crate::usecase::auth::login_with_email::LoginWithEmailUsecase;
+use crate::usecase::auth::logout::LogoutUsecase;
 use crate::usecase::auth::refresh_token::RefreshTokenUsecase;
 use crate::usecase::auth::sign_up_with_email::SignUpWithEmailUsecase;
 use crate::usecase::auth::sign_up_with_mobile_device::SignUpWithMobileDeviceUsecase;
@@ -18,6 +19,7 @@ where
 {
     pub sign_up: Arc<SignUpWithEmailUsecase<R>>,
     pub login: Arc<LoginWithEmailUsecase<R, RT>>,
+    pub logout: Arc<LogoutUsecase<RT>>,
     pub refresh_token: Arc<RefreshTokenUsecase<R, RT>>,
     pub update_password: Arc<UpdatePasswordUsecase<R>>,
     pub update_name: Arc<UpdateNameUsecase<R>>,

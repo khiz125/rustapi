@@ -19,6 +19,7 @@ use std::env;
 use std::sync::Arc;
 
 use crate::infra::database::connection::create_pool;
+use crate::usecase::auth::logout::LogoutUsecase;
 use crate::usecase::auth::sign_up_with_mobile_device::SignUpWithMobileDeviceUsecase;
 use crate::usecase::user::update_name::UpdateNameUsecase;
 
@@ -57,6 +58,7 @@ async fn main() {
             refresh_token_repository.clone(),
             jwt_secret.clone(),
         )),
+        logout: Arc::new(LogoutUsecase::new(refresh_token_repository.clone())),
         refresh_token: Arc::new(RefreshTokenUsecase::new(
             user_repository.clone(),
             refresh_token_repository.clone(),
