@@ -86,3 +86,109 @@ impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithMobileDeviceUsecas
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::refresh_token::RefreshToken;
+    use crate::domain::refresh_token::repository::MockRefreshTokenRepository;
+    use crate::domain::refresh_token::vo::{RefreshTokenId, TokenHash};
+    use crate::domain::user::User;
+    use crate::domain::user::repository::MockUserRepository;
+    use crate::domain::user::user_auth::UserAuth;
+    use crate::domain::user::vo::{DeviceId, UserId};
+    use chrono::Utc;
+    use std::sync::Arc;
+
+    fn make_usecase(
+        mock: MockUserRepository,
+        mock_rt: MockRefreshTokenRepository,
+    ) -> SignUpWithMobileDeviceUsecase<MockUserRepository, MockRefreshTokenRepository> {
+        SignUpWithMobileDeviceUsecase::new(
+            Arc::new(mock),
+            Arc::new(mock_rt),
+            "test_secret".to_string(),
+        )
+    }
+
+    fn make_refresh_token() -> RefreshToken {
+        RefreshToken {
+            id: RefreshTokenId::new(1),
+            user_id: UserId::new(1),
+            token_hash: TokenHash::from_hash("hash"),
+            expires_at: Utc::now() + chrono::Duration::days(30),
+            created_at: Utc::now(),
+            revoked_at: None,
+        }
+    }
+
+    fn to_user(new_user: NewUser, id: i64) -> User {
+        let user_id = UserId::new(id);
+        User {
+            id: user_id,
+            name: new_user.name,
+            auth: UserAuth {
+                user_id,
+                auth_method: new_user.auth.method,
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            },
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    fn make_existing_user() -> User {
+        let name = UserName::new("user_test1234").unwrap();
+        let device_id = DeviceId::new("test-device-id-12345678");
+        let new_user = NewUser::new_mobile_device(name, device_id);
+        to_user(new_user, 1)
+    }
+
+    #[tokio::test]
+    async fn new_user_is_created() {
+        let mut mock = MockUserRepository::new();
+        let mut mock_rt = MockRefreshTokenRepository::new();
+
+        mock.expect_find_by_device_id().returning(|_| Ok(None));
+        mock.expect_create()
+            .returning(|new_user| Ok(to_user(new_user, 2)));
+        mock_rt
+            .expect_create()
+            .returning(|_, _, _| Ok(make_refresh_token()));
+
+        let result = make_usecase(mock, mock_rt)
+            .execute(SignUpWithMobileDeviceInput {
+                device_id: "test-device-id-123".to_string(),
+                name: None,
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(result.user_id, 2);
+        assert!(result.is_new_user);
+    }
+
+    #[tokio::test]
+    async fn existing_user_logs_in() {
+        let mut mock = MockUserRepository::new();
+        let mut mock_rt = MockRefreshTokenRepository::new();
+
+        mock.expect_find_by_device_id()
+            .returning(|_| Ok(Some(make_existing_user())));
+        mock_rt
+            .expect_create()
+            .returning(|_, _, _| Ok(make_refresh_token()));
+
+        let result = make_usecase(mock, mock_rt)
+            .execute(SignUpWithMobileDeviceInput {
+                device_id: "test-device-id-123".to_string(),
+                name: None,
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(result.user_id, 1);
+        assert!(!result.is_new_user);
+    }
+}

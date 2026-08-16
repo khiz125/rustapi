@@ -1,9 +1,13 @@
 use crate::domain::error::DomainError;
+use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::NewUser;
 use crate::domain::user::repository::UserRepository;
-use crate::domain::user::vo::{Email, OAuthProvider, ProviderUserId, UserName};
-use crate::usecase::auth::token::issue_token;
+use crate::domain::user::vo::{Email, OAuthProvider, ProviderUserId, UserId, UserName};
+use crate::usecase::auth::token::{
+    generate_refresh_token, hash_refresh_token, issue_token, issue_tokens,
+};
 
+use chrono::Utc;
 use std::sync::Arc;
 
 pub struct SignUpWithOAuthInput {
@@ -15,19 +19,26 @@ pub struct SignUpWithOAuthInput {
 
 pub struct SignUpWithOAuthOutput {
     pub user_id: i64,
-    pub token: String,
+    pub access_token: String,
+    pub refresh_token: String,
     pub is_new_user: bool,
 }
 
-pub struct SignUpWithOAuthUsecase<R: UserRepository> {
+pub struct SignUpWithOAuthUsecase<R: UserRepository, RT: RefreshTokenRepository> {
     user_repository: Arc<R>,
+    refresh_token_repository: Arc<RT>,
     jwt_secret: String,
 }
 
-impl<R: UserRepository> SignUpWithOAuthUsecase<R> {
-    pub fn new(user_repository: Arc<R>, jwt_secret: String) -> Self {
+impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithOAuthUsecase<R, RT> {
+    pub fn new(
+        user_repository: Arc<R>,
+        refresh_token_repository: Arc<RT>,
+        jwt_secret: String,
+    ) -> Self {
         Self {
             user_repository,
+            refresh_token_repository,
             jwt_secret,
         }
     }
@@ -37,15 +48,23 @@ impl<R: UserRepository> SignUpWithOAuthUsecase<R> {
         input: SignUpWithOAuthInput,
     ) -> Result<SignUpWithOAuthOutput, DomainError> {
         let provider_user_id = ProviderUserId::new(input.provider_user_id);
+
         if let Some(existing) = self
             .user_repository
             .find_by_provider(&input.provider, &provider_user_id)
             .await?
         {
-            let token = issue_token(existing.id.value(), &self.jwt_secret)?;
+            let (access_token, refresh_token) = issue_tokens(
+                existing.id,
+                &self.jwt_secret,
+                &*self.refresh_token_repository,
+            )
+            .await?;
+
             return Ok(SignUpWithOAuthOutput {
                 user_id: existing.id.value(),
-                token,
+                access_token,
+                refresh_token,
                 is_new_user: false,
             });
         }
@@ -54,11 +73,18 @@ impl<R: UserRepository> SignUpWithOAuthUsecase<R> {
         let email = input.email.map(Email::new).transpose()?;
         let new_user = NewUser::new_oauth(name, email, input.provider, provider_user_id);
         let created = self.user_repository.create(new_user).await?;
-        let token = issue_token(created.id.value(), &self.jwt_secret)?;
+
+        let (access_token, refresh_token) = issue_tokens(
+            created.id,
+            &self.jwt_secret,
+            &*self.refresh_token_repository,
+        )
+        .await?;
 
         Ok(SignUpWithOAuthOutput {
             user_id: created.id.value(),
-            token,
+            access_token,
+            refresh_token,
             is_new_user: true,
         })
     }
@@ -67,14 +93,20 @@ impl<R: UserRepository> SignUpWithOAuthUsecase<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::refresh_token::RefreshToken;
+    use crate::domain::refresh_token::repository::MockRefreshTokenRepository;
+    use crate::domain::refresh_token::vo::{RefreshTokenId, TokenHash};
     use crate::domain::user::User;
     use crate::domain::user::vo::UserId;
     use crate::domain::user::{repository::MockUserRepository, user_auth::UserAuth};
 
     use std::sync::Arc;
 
-    fn make_usecase(mock: MockUserRepository) -> SignUpWithOAuthUsecase<MockUserRepository> {
-        SignUpWithOAuthUsecase::new(Arc::new(mock), "test_secret".to_string())
+    fn make_usecase(
+        mock: MockUserRepository,
+        mock_rt: MockRefreshTokenRepository,
+    ) -> SignUpWithOAuthUsecase<MockUserRepository, MockRefreshTokenRepository> {
+        SignUpWithOAuthUsecase::new(Arc::new(mock), Arc::new(mock_rt), "test_secret".to_string())
     }
 
     fn to_user(new_user: NewUser, id: i64) -> User {
@@ -102,15 +134,30 @@ mod tests {
         to_user(new_user, 1)
     }
 
+    fn make_refresh_token() -> RefreshToken {
+        RefreshToken {
+            id: RefreshTokenId::new(1),
+            user_id: UserId::new(1),
+            token_hash: TokenHash::from_hash("hash"),
+            expires_at: Utc::now() + chrono::Duration::days(30),
+            created_at: Utc::now(),
+            revoked_at: None,
+        }
+    }
+
     #[tokio::test]
     async fn new_user_is_created() {
         let mut mock = MockUserRepository::new();
+        let mut mock_rt = MockRefreshTokenRepository::new();
 
         mock.expect_find_by_provider().returning(|_, _| Ok(None));
         mock.expect_create()
             .returning(|new_user| Ok(to_user(new_user, 2)));
+        mock_rt
+            .expect_create()
+            .returning(|_, _, _| Ok(make_refresh_token()));
 
-        let result = make_usecase(mock)
+        let result = make_usecase(mock, mock_rt)
             .execute(SignUpWithOAuthInput {
                 provider: OAuthProvider::Google,
                 provider_user_id: "google_456".to_string(),
@@ -127,11 +174,15 @@ mod tests {
     #[tokio::test]
     async fn existing_user_logs_in() {
         let mut mock = MockUserRepository::new();
+        let mut mock_rt = MockRefreshTokenRepository::new();
 
         mock.expect_find_by_provider()
             .returning(|_, _| Ok(Some(make_existing_user())));
+        mock_rt
+            .expect_create()
+            .returning(|_, _, _| Ok(make_refresh_token()));
 
-        let result = make_usecase(mock)
+        let result = make_usecase(mock, mock_rt)
             .execute(SignUpWithOAuthInput {
                 provider: OAuthProvider::Google,
                 provider_user_id: "google_123".to_lowercase(),
@@ -148,10 +199,11 @@ mod tests {
     #[tokio::test]
     async fn invalid_name() {
         let mut mock = MockUserRepository::new();
+        let mock_rt = MockRefreshTokenRepository::new();
 
         mock.expect_find_by_provider().returning(|_, _| Ok(None));
 
-        let result = make_usecase(mock)
+        let result = make_usecase(mock, mock_rt)
             .execute(SignUpWithOAuthInput {
                 provider: OAuthProvider::Google,
                 provider_user_id: "google_456".to_string(),

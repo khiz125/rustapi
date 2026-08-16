@@ -24,7 +24,8 @@ pub struct SignUpRequest {
 #[derive(Serialize)]
 pub struct SignUpResponse {
     pub user_id: i64,
-    pub token: String,
+    pub access_token: String,
+    pub refresh_token: String,
 }
 
 #[derive(Deserialize)]
@@ -212,7 +213,8 @@ where
         StatusCode::CREATED,
         Json(SignUpResponse {
             user_id: output.user_id,
-            token: output.token,
+            access_token: output.access_token,
+            refresh_token: output.refresh_token,
         }),
     ))
 }

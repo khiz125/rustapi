@@ -1,5 +1,8 @@
 use crate::domain::error::DomainError;
+use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::refresh_token::vo::TokenHash;
+use crate::domain::user::vo::UserId;
+
 use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -26,6 +29,23 @@ pub fn issue_token(user_id: i64, secret: &str) -> Result<String, DomainError> {
         &EncodingKey::from_secret(secret.as_bytes()),
     )
     .map_err(|e| DomainError::Unexpected(e.to_string()))
+}
+
+pub async fn issue_tokens<RT: RefreshTokenRepository>(
+    user_id: UserId,
+    jwt_secret: &str,
+    refresh_token_repository: &RT,
+) -> Result<(String, String), crate::domain::error::DomainError> {
+    let access_token = issue_token(user_id.value(), jwt_secret)?;
+    let refresh_token = generate_refresh_token();
+    let token_hash = hash_refresh_token(&refresh_token);
+    let expires_at = chrono::Utc::now() + chrono::Duration::days(30);
+
+    refresh_token_repository
+        .create(user_id, token_hash, expires_at)
+        .await?;
+
+    Ok((access_token, refresh_token))
 }
 
 pub fn generate_refresh_token() -> String {

@@ -17,7 +17,8 @@ pub struct CallbackQuery {
 #[derive(Serialize)]
 pub struct OAuthResponse {
     pub user_id: i64,
-    pub token: String,
+    pub access_token: String,
+    pub refresh_token: String,
     pub is_new_user: bool,
 }
 
@@ -54,7 +55,8 @@ where
 
     Ok(Json(OAuthResponse {
         user_id: output.user_id,
-        token: output.token,
+        access_token: output.access_token,
+        refresh_token: output.refresh_token,
         is_new_user: output.is_new_user,
     }))
 }

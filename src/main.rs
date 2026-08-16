@@ -51,6 +51,7 @@ async fn main() {
     let state = AppState {
         sign_up: Arc::new(SignUpWithEmailUsecase::new(
             user_repository.clone(),
+            refresh_token_repository.clone(),
             jwt_secret.clone(),
         )),
         login: Arc::new(LoginWithEmailUsecase::new(
@@ -68,6 +69,7 @@ async fn main() {
         update_name: Arc::new(UpdateNameUsecase::new(user_repository.clone())),
         sign_up_with_oauth: Arc::new(SignUpWithOAuthUsecase::new(
             user_repository.clone(),
+            refresh_token_repository.clone(),
             jwt_secret.clone(),
         )),
         sign_up_with_mobile_device: Arc::new(SignUpWithMobileDeviceUsecase::new(
