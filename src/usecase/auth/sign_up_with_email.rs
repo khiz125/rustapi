@@ -61,6 +61,7 @@ impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithEmailUsecase<R, RT
         let (access_token, refresh_token) = issue_tokens(
             created.id,
             &self.jwt_secret,
+            created.plan.as_str(),
             &*self.refresh_token_repository,
         )
         .await?;
@@ -82,7 +83,7 @@ mod tests {
     use crate::domain::user::User;
     use crate::domain::user::repository::MockUserRepository;
     use crate::domain::user::user_auth::UserAuth;
-    use crate::domain::user::vo::{Email, UserId};
+    use crate::domain::user::vo::{Email, UserId, UserPlan};
     use crate::usecase::auth::sign_up_with_email::SignUpWithEmailInput;
     use std::sync::Arc;
 
@@ -104,6 +105,8 @@ mod tests {
                 created_at: chrono::Utc::now(),
                 updated_at: chrono::Utc::now(),
             },
+            plan: UserPlan::Free,
+            plan_expires_at: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         }

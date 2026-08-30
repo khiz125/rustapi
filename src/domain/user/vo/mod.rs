@@ -5,6 +5,7 @@ pub mod password_hash;
 pub mod provider_user_id;
 pub mod user_id;
 pub mod user_name;
+pub mod user_plan;
 
 pub use device_id::DeviceId;
 pub use email::Email;
@@ -13,3 +14,4 @@ pub use password_hash::PasswordHash;
 pub use provider_user_id::ProviderUserId;
 pub use user_id::UserId;
 pub use user_name::UserName;
+pub use user_plan::UserPlan;

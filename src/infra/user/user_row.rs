@@ -4,6 +4,7 @@ use crate::domain::types::UtcDateTime;
 use crate::domain::user::User;
 use crate::domain::user::user_auth::{AuthMethod, UserAuth};
 
+use crate::domain::user::vo::UserPlan;
 use crate::domain::user::vo::device_id::DeviceId;
 use crate::domain::user::vo::email::Email;
 use crate::domain::user::vo::oauth_provider::OAuthProvider;
@@ -40,6 +41,8 @@ pub(super) enum AuthRow {
 pub(super) struct UserRow {
     pub id: i64,
     pub name: String,
+    pub plan: String,
+    pub plan_expires_at: Option<UtcDateTime>,
     pub created_at: UtcDateTime,
     pub updated_at: UtcDateTime,
     pub kind: AuthRow,
@@ -50,6 +53,8 @@ impl UserRow {
     pub fn into_domain(self) -> Result<User, DomainError> {
         let user_id = UserId::new(self.id);
         let name = UserName::new(self.name).map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        let plan = UserPlan::from_str(&self.plan)
+            .ok_or_else(|| DomainError::Unexpected(format!("unknow plan: {}", self.plan)))?;
 
         let (auth_method, auth_created_at, auth_updated_at) = match self.kind {
             AuthRow::Password {
@@ -115,6 +120,8 @@ impl UserRow {
                 created_at: auth_created_at,
                 updated_at: auth_updated_at,
             },
+            plan,
+            plan_expires_at: self.plan_expires_at,
             created_at: self.created_at,
             updated_at: self.updated_at,
         })

@@ -7,8 +7,10 @@ use crate::usecase::auth::refresh_token::RefreshTokenUsecase;
 use crate::usecase::auth::sign_up_with_email::SignUpWithEmailUsecase;
 use crate::usecase::auth::sign_up_with_mobile_device::SignUpWithMobileDeviceUsecase;
 use crate::usecase::auth::sign_up_with_oauth::SignUpWithOAuthUsecase;
+use crate::usecase::user::get_me::GetMeUsecase;
 use crate::usecase::user::update_name::UpdateNameUsecase;
 use crate::usecase::user::update_password::UpdatePasswordUsecase;
+use crate::usecase::user::update_plan::UpdatePlanUsecase;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -23,6 +25,8 @@ where
     pub refresh_token: Arc<RefreshTokenUsecase<R, RT>>,
     pub update_password: Arc<UpdatePasswordUsecase<R>>,
     pub update_name: Arc<UpdateNameUsecase<R>>,
+    pub update_plan: Arc<UpdatePlanUsecase<R>>,
+    pub get_me: Arc<GetMeUsecase<R>>,
     pub sign_up_with_oauth: Arc<SignUpWithOAuthUsecase<R, RT>>,
     pub sign_up_with_mobile_device: Arc<SignUpWithMobileDeviceUsecase<R, RT>>,
     pub google_oauth_client: Arc<GoogleOAuthClient>,

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE users\n            SET plan = $1::text::user_plan,\n                plan_expires_at = $2,\n                updated_at = now()\n            WHERE id = $3\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "919f51d5c1184c455956be98d6d51bbbf9f2c3781b617f4ffdd1ccebdb667a29"
+}

@@ -53,7 +53,9 @@ mod tests {
     use crate::domain::user::User;
     use crate::domain::user::repository::MockUserRepository;
     use crate::domain::user::user_auth::UserAuth;
-    use crate::domain::user::vo::{Email, OAuthProvider, ProviderUserId, UserId, UserName};
+    use crate::domain::user::vo::{
+        Email, OAuthProvider, ProviderUserId, UserId, UserName, UserPlan,
+    };
     use crate::usecase::auth::password_crypto::hash_password;
     use std::sync::Arc;
 
@@ -65,15 +67,17 @@ mod tests {
         let user_id = UserId::new(1);
         let name = UserName::new("testname").unwrap();
         let email = Email::new("test@example.com".to_string()).unwrap();
+        let plan = UserPlan::Free;
         let password_hash = hash_password(raw_password).unwrap();
         let auth = UserAuth::new_password(user_id, email, password_hash);
-        User::new(user_id, name, auth)
+        User::new(user_id, name, auth, plan)
     }
 
     fn make_oauth_user() -> User {
         let user_id = UserId::new(1);
         let email = Email::new("test@example.com".to_string()).unwrap();
         let name = UserName::new("oauth_user").unwrap();
+        let plan = UserPlan::Free;
         let provider_user_id = ProviderUserId::new("google_user".to_string());
         let auth = UserAuth::new_oauth(
             user_id,
@@ -81,7 +85,7 @@ mod tests {
             OAuthProvider::Google,
             provider_user_id,
         );
-        User::new(user_id, name, auth)
+        User::new(user_id, name, auth, plan)
     }
 
     #[tokio::test]

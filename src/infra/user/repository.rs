@@ -2,14 +2,16 @@ use super::user_row::{AuthRow, UserRow};
 use crate::domain::error::DomainError;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::user_auth::{AuthMethod, UserAuth};
-use crate::domain::user::vo::UserName;
+use crate::domain::user::vo::{UserName, UserPlan};
 use crate::domain::user::vo::{
     device_id::DeviceId, email::Email, oauth_provider::OAuthProvider,
     provider_user_id::ProviderUserId, user_id::UserId,
 };
 use crate::domain::user::{NewUser, User};
+use crate::infra::user::user_row;
 
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 #[derive(Clone)]
@@ -31,6 +33,8 @@ impl UserRepository for PgUserRepository {
               SELECT
                 u.id,
                 u.name,
+                u.plan::text AS "plan!: String",
+                u.plan_expires_at,
                 u.created_at,
                 u.updated_at,
                 a.kind::text as "kind!: String",
@@ -57,6 +61,8 @@ impl UserRepository for PgUserRepository {
         let user_row = UserRow {
             id: row.id,
             name: row.name,
+            plan: row.plan,
+            plan_expires_at: row.plan_expires_at,
             created_at: row.created_at,
             updated_at: row.updated_at,
             kind: AuthRow::from_row(
@@ -81,6 +87,8 @@ impl UserRepository for PgUserRepository {
         SELECT
             u.id,
             u.name,
+            u.plan::text AS "plan!: String",
+            u.plan_expires_at,
             u.created_at,
             u.updated_at,
             a.kind::text        AS "kind!: String",
@@ -109,6 +117,8 @@ impl UserRepository for PgUserRepository {
         let user_row = UserRow {
             id: row.id,
             name: row.name,
+            plan: row.plan,
+            plan_expires_at: row.plan_expires_at,
             created_at: row.created_at,
             updated_at: row.updated_at,
             kind: AuthRow::from_row(
@@ -130,6 +140,8 @@ impl UserRepository for PgUserRepository {
         SELECT
             u.id,
             u.name,
+            u.plan::text AS "plan!: String",
+            u.plan_expires_at,
             u.created_at,
             u.updated_at,
             a.kind::text        AS "kind!: String",
@@ -156,6 +168,8 @@ impl UserRepository for PgUserRepository {
         let user_row = UserRow {
             id: row.id,
             name: row.name,
+            plan: row.plan,
+            plan_expires_at: row.plan_expires_at,
             created_at: row.created_at,
             updated_at: row.updated_at,
             kind: AuthRow::from_row(
@@ -177,6 +191,8 @@ impl UserRepository for PgUserRepository {
             SELECT
                 u.id,
                 u.name,
+                u.plan::text AS "plan!: String",
+                u.plan_expires_at,
                 u.created_at,
                 u.updated_at,
                 a.kind::text AS "kind!: String",
@@ -204,6 +220,8 @@ impl UserRepository for PgUserRepository {
         let user_row = UserRow {
             id: row.id,
             name: row.name,
+            plan: row.plan,
+            plan_expires_at: row.plan_expires_at,
             created_at: row.created_at,
             updated_at: row.updated_at,
             kind: AuthRow::from_row(
@@ -230,7 +248,12 @@ impl UserRepository for PgUserRepository {
             r#"
               INSERT INTO users (name)
               VALUES ($1)
-              RETURNING id, name, created_at, updated_at
+              RETURNING id,
+                        name,
+                        plan::text AS "plan!: String",
+                        plan_expires_at,
+                        created_at,
+                        updated_at
             "#,
             new_user.name.value()
         )
@@ -358,6 +381,8 @@ impl UserRepository for PgUserRepository {
         let user_row_dto = UserRow {
             id: user_row.id,
             name: user_row.name,
+            plan: user_row.plan,
+            plan_expires_at: user_row.plan_expires_at,
             created_at: user_row.created_at,
             updated_at: user_row.updated_at,
             kind: auth_row,
@@ -407,6 +432,31 @@ impl UserRepository for PgUserRepository {
             WHERE id = $2
             "#,
             new_name.value(),
+            user_id.value()
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn update_plan(
+        &self,
+        user_id: UserId,
+        plan: UserPlan,
+        plan_expires_at: Option<DateTime<Utc>>,
+    ) -> Result<(), DomainError> {
+        sqlx::query!(
+            r#"
+            UPDATE users
+            SET plan = $1::text::user_plan,
+                plan_expires_at = $2,
+                updated_at = now()
+            WHERE id = $3
+            "#,
+            plan.as_str(),
+            plan_expires_at,
             user_id.value()
         )
         .execute(&self.pool)

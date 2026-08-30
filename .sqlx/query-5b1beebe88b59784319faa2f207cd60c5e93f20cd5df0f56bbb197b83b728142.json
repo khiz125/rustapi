@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n              INSERT INTO users (name)\n              VALUES ($1)\n              RETURNING id,\n                        name,\n                        plan::text AS \"plan!: String\",\n                        plan_expires_at,\n                        created_at,\n                        updated_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "plan!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "plan_expires_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5b1beebe88b59784319faa2f207cd60c5e93f20cd5df0f56bbb197b83b728142"
+}

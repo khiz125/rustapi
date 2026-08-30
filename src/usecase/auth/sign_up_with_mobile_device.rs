@@ -45,7 +45,8 @@ impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithMobileDeviceUsecas
         let device_id = DeviceId::new(input.device_id);
         {
             if let Some(existing) = self.user_repository.find_by_device_id(&device_id).await? {
-                let access_token = issue_token(existing.id.value(), &self.jwt_token)?;
+                let access_token =
+                    issue_token(existing.id.value(), &self.jwt_token, existing.plan.as_str())?;
                 let refresh_token = generate_refresh_token();
                 let token_hash = hash_refresh_token(&refresh_token);
                 let expires_at = Utc::now() + chrono::Duration::days(30);
@@ -69,7 +70,7 @@ impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithMobileDeviceUsecas
         let user_name = UserName::new(name)?;
         let new_user = NewUser::new_mobile_device(user_name, device_id);
         let created = self.user_repository.create(new_user).await?;
-        let access_token = issue_token(created.id.value(), &self.jwt_token)?;
+        let access_token = issue_token(created.id.value(), &self.jwt_token, created.plan.as_str())?;
         let refresh_token = generate_refresh_token();
         let token_hash = hash_refresh_token(&refresh_token);
         let expires_at = Utc::now() + chrono::Duration::days(30);
@@ -96,7 +97,7 @@ mod tests {
     use crate::domain::user::User;
     use crate::domain::user::repository::MockUserRepository;
     use crate::domain::user::user_auth::UserAuth;
-    use crate::domain::user::vo::{DeviceId, UserId};
+    use crate::domain::user::vo::{DeviceId, UserId, UserPlan};
     use chrono::Utc;
     use std::sync::Arc;
 
@@ -133,6 +134,8 @@ mod tests {
                 created_at: Utc::now(),
                 updated_at: Utc::now(),
             },
+            plan: UserPlan::Free,
+            plan_expires_at: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         }

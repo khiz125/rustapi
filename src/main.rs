@@ -21,7 +21,9 @@ use std::sync::Arc;
 use crate::infra::database::connection::create_pool;
 use crate::usecase::auth::logout::LogoutUsecase;
 use crate::usecase::auth::sign_up_with_mobile_device::SignUpWithMobileDeviceUsecase;
+use crate::usecase::user::get_me::GetMeUsecase;
 use crate::usecase::user::update_name::UpdateNameUsecase;
+use crate::usecase::user::update_plan::UpdatePlanUsecase;
 
 #[tokio::main]
 async fn main() {
@@ -67,6 +69,8 @@ async fn main() {
         )),
         update_password: Arc::new(UpdatePasswordUsecase::new(user_repository.clone())),
         update_name: Arc::new(UpdateNameUsecase::new(user_repository.clone())),
+        update_plan: Arc::new(UpdatePlanUsecase::new(user_repository.clone())),
+        get_me: Arc::new(GetMeUsecase::new(user_repository.clone())),
         sign_up_with_oauth: Arc::new(SignUpWithOAuthUsecase::new(
             user_repository.clone(),
             refresh_token_repository.clone(),

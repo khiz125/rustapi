@@ -29,6 +29,7 @@ where
         .route("/web/auth/login", post(auth::web_login::<R, RT>))
         .route("/web/auth/refresh", post(auth::web_refresh::<R, RT>))
         // user handle
+        .route("/users/me", get(user::get_me::<R, RT>))
         .route("/users/me/password", put(user::update_password::<R, RT>))
         .route("/users/me/name", put(user::update_name::<R, RT>))
         .with_state(state)

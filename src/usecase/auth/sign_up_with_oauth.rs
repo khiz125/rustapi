@@ -57,6 +57,7 @@ impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithOAuthUsecase<R, RT
             let (access_token, refresh_token) = issue_tokens(
                 existing.id,
                 &self.jwt_secret,
+                existing.plan.as_str(),
                 &*self.refresh_token_repository,
             )
             .await?;
@@ -77,6 +78,7 @@ impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithOAuthUsecase<R, RT
         let (access_token, refresh_token) = issue_tokens(
             created.id,
             &self.jwt_secret,
+            created.plan.as_str(),
             &*self.refresh_token_repository,
         )
         .await?;
@@ -97,7 +99,7 @@ mod tests {
     use crate::domain::refresh_token::repository::MockRefreshTokenRepository;
     use crate::domain::refresh_token::vo::{RefreshTokenId, TokenHash};
     use crate::domain::user::User;
-    use crate::domain::user::vo::UserId;
+    use crate::domain::user::vo::{UserId, UserPlan};
     use crate::domain::user::{repository::MockUserRepository, user_auth::UserAuth};
 
     use std::sync::Arc;
@@ -120,6 +122,8 @@ mod tests {
                 created_at: chrono::Utc::now(),
                 updated_at: chrono::Utc::now(),
             },
+            plan: UserPlan::Free,
+            plan_expires_at: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         }

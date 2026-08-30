@@ -12,16 +12,21 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub struct Claims {
     pub sub: i64,
     pub exp: u64,
+    pub plan: String,
 }
 
-pub fn issue_token(user_id: i64, secret: &str) -> Result<String, DomainError> {
+pub fn issue_token(user_id: i64, secret: &str, plan: &str) -> Result<String, DomainError> {
     let exp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|e| DomainError::Unexpected(e.to_string()))?
         .as_secs()
         + 60 * 15;
 
-    let claims = Claims { sub: user_id, exp };
+    let claims = Claims {
+        sub: user_id,
+        exp,
+        plan: plan.to_string(),
+    };
 
     encode(
         &Header::default(),
@@ -33,10 +38,11 @@ pub fn issue_token(user_id: i64, secret: &str) -> Result<String, DomainError> {
 
 pub async fn issue_tokens<RT: RefreshTokenRepository>(
     user_id: UserId,
+    plan: &str,
     jwt_secret: &str,
     refresh_token_repository: &RT,
 ) -> Result<(String, String), crate::domain::error::DomainError> {
-    let access_token = issue_token(user_id.value(), jwt_secret)?;
+    let access_token = issue_token(user_id.value(), jwt_secret, plan)?;
     let refresh_token = generate_refresh_token();
     let token_hash = hash_refresh_token(&refresh_token);
     let expires_at = chrono::Utc::now() + chrono::Duration::days(30);

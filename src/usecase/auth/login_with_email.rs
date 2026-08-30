@@ -59,7 +59,7 @@ impl<R: UserRepository, RT: RefreshTokenRepository> LoginWithEmailUsecase<R, RT>
 
         verify_password(&input.password, password_hash)?;
 
-        let access_token = issue_token(user.id.value(), &self.jwt_secret)?;
+        let access_token = issue_token(user.id.value(), &self.jwt_secret, user.plan.as_str())?;
         let refresh_token = generate_refresh_token();
         let token_hash = hash_refresh_token(&refresh_token);
         let expires_at = Utc::now() + chrono::Duration::days(30);
@@ -85,7 +85,7 @@ mod tests {
     use crate::domain::user::User;
     use crate::domain::user::repository::MockUserRepository;
     use crate::domain::user::user_auth::UserAuth;
-    use crate::domain::user::vo::{UserId, UserName};
+    use crate::domain::user::vo::{UserId, UserName, UserPlan};
     use crate::usecase::auth::password_crypto::hash_password;
     use std::sync::Arc;
 
@@ -100,9 +100,10 @@ mod tests {
         let user_id = UserId::new(1);
         let name = UserName::new("testuser").unwrap();
         let email = Email::new("test@example.com".to_string()).unwrap();
+        let plan = UserPlan::Free;
         let password_hash = hash_password(raw_password).unwrap();
         let auth = UserAuth::new_password(user_id, email, password_hash);
-        User::new(user_id, name, auth)
+        User::new(user_id, name, auth, plan)
     }
 
     #[tokio::test]

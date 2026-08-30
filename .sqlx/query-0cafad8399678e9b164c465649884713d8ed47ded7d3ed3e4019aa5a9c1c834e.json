@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            u.id,\n            u.name,\n            u.created_at,\n            u.updated_at,\n            a.kind::text        AS \"kind!: String\",\n            a.email,\n            a.password_hash,\n            a.provider,\n            a.provider_user_id,\n            a.created_at        AS auth_created_at,\n            a.updated_at        AS auth_updated_at\n        FROM users u\n        INNER JOIN user_auth a ON a.user_id = u.id\n        WHERE a.email = $1\n        ",
+  "query": "\n              SELECT\n                u.id,\n                u.name,\n                u.plan::text AS \"plan!: String\",\n                u.plan_expires_at,\n                u.created_at,\n                u.updated_at,\n                a.kind::text as \"kind!: String\",\n                a.email,\n                a.password_hash,\n                a.provider,\n                a.provider_user_id,\n                a.created_at as auth_created_at,\n                a.updated_at as auth_updated_at\n              FROM users u\n              INNER JOIN user_auth a ON a.user_id = u.id\n              WHERE u.id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -15,58 +15,70 @@
       },
       {
         "ordinal": 2,
-        "name": "created_at",
-        "type_info": "Timestamptz"
+        "name": "plan!: String",
+        "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "updated_at",
+        "name": "plan_expires_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
         "name": "kind!: String",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "email",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 8,
         "name": "password_hash",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "provider",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "provider_user_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "auth_created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "auth_updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Int8"
       ]
     },
     "nullable": [
       false,
       false,
+      null,
+      true,
       false,
       false,
       null,
@@ -78,5 +90,5 @@
       false
     ]
   },
-  "hash": "46107d033bfe3d0b0046e812b1202eb4536ad0c02cdbc597bdcb658cb5ac285d"
+  "hash": "0cafad8399678e9b164c465649884713d8ed47ded7d3ed3e4019aa5a9c1c834e"
 }

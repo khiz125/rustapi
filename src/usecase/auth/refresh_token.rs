@@ -1,6 +1,7 @@
 use crate::domain::error::DomainError;
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::repository::UserRepository;
+use crate::domain::user::vo::UserPlan;
 use crate::usecase::auth::token::{generate_refresh_token, hash_refresh_token, issue_token};
 use chrono::Utc;
 use std::sync::Arc;
@@ -49,17 +50,26 @@ impl<R: UserRepository, RT: RefreshTokenRepository> RefreshTokenUsecase<R, RT> {
             return Err(DomainError::Unauthorized);
         }
 
-        let user = self
+        let mut user = self
             .user_repository
             .find_by_id(stored_token.user_id)
             .await?
             .ok_or(DomainError::UserNotFound)?;
 
+        if user.plan.is_premium() && !user.is_premium() {
+            self.user_repository
+                .update_plan(user.id, UserPlan::Free, None)
+                .await?;
+            user.plan = UserPlan::Free;
+            user.plan_expires_at = None
+        }
+
         self.refresh_token_repository
             .revoke(stored_token.id)
             .await?;
 
-        let access_token = issue_token(user.id.value(), &self.jwt_secret)?;
+        let plan = user.plan.as_str();
+        let access_token = issue_token(user.id.value(), &self.jwt_secret, plan)?;
         let new_refresh_token = generate_refresh_token();
         let new_token_hash = hash_refresh_token(&new_refresh_token);
         let expires_at = Utc::now() + chrono::Duration::days(30);
