@@ -26,7 +26,7 @@ pub trait SubscriptionRepository: Send + Sync {
     async fn create(
         &self,
         user_id: UserId,
-        provder: &SubscriptionProvider,
+        provder: SubscriptionProvider,
         provider_subscription_id: ProviderSubscriptionId,
         plan: UserPlan,
         expires_at: DateTime<Utc>,
@@ -35,7 +35,7 @@ pub trait SubscriptionRepository: Send + Sync {
     async fn update_status(
         &self,
         provder: &SubscriptionProvider,
-        provider_subscription_id: ProviderSubscriptionId,
+        provider_subscription_id: &ProviderSubscriptionId,
         status: SubscriptionStatus,
         expires_at: Option<DateTime<Utc>>,
     ) -> Result<(), DomainError>;

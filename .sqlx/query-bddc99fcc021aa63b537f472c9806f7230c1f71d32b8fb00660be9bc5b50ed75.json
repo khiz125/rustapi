@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                user_id,\n                provider::text AS \"provider!: String\",\n                provider_subscription_id,\n                status::text AS \"status!: String\",\n                plan::text AS \"plan!: String\",\n                started_at,\n                expires_at,\n                created_at,\n                updated_at\n            FROM subscriptions\n            WHERE provider = $1::text::subscription_provider\n              AND provider_subscription_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "provider!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "provider_subscription_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "plan!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "started_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "expires_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false,
+      null,
+      null,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bddc99fcc021aa63b537f472c9806f7230c1f71d32b8fb00660be9bc5b50ed75"
+}

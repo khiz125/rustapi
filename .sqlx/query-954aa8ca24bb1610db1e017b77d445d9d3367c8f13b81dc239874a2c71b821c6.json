@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE subscriptions\n            SET status = $1::text::subscription_status,\n                expires_at = COALESCE($2, expires_at),\n                updated_at = now()\n            WHERE provider = $3::text::subscription_provider\n                AND provider_subscription_id = $4\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "954aa8ca24bb1610db1e017b77d445d9d3367c8f13b81dc239874a2c71b821c6"
+}
