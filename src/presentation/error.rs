@@ -72,6 +72,33 @@ impl IntoResponse for AppError {
                     None,
                 )
             }
+            DomainError::SubscriptionNotFound => {
+                (StatusCode::NOT_FOUND, &ec::SUBSCRIPTION_NOT_FOUND, None)
+            }
+            DomainError::SubscriptionAlreadyExists => {
+                (StatusCode::CONFLICT, &ec::SUBSCRIPTION_ALREADY_EXISTS, None)
+            }
+            DomainError::InvalidSubscription(detail) => (
+                StatusCode::BAD_REQUEST,
+                &ec::INVALID_SUBSCRIPTION,
+                Some(detail),
+            ),
+            DomainError::PlanUpgradeRequired => {
+                (StatusCode::FORBIDDEN, &ec::PLAN_UPGRADE_REQUIRED, None)
+            }
+            DomainError::WebhookVerificationFailed => (
+                StatusCode::UNAUTHORIZED,
+                &ec::WEBHOOK_VERIFICATION_FAILED,
+                None,
+            ),
+            DomainError::ProviderApiError(e) => {
+                tracing::error!("provider api error: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &ec::INTERNAL_SERVER_ERROR,
+                    None,
+                )
+            }
         };
 
         (

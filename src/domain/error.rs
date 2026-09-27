@@ -28,4 +28,18 @@ pub enum DomainError {
 
     #[error("email already exists")]
     EmailAlreadyExists,
+
+    // FIX ME
+    #[error("subscription not found")]
+    SubscriptionNotFound,
+    #[error("subscription already exists")]
+    SubscriptionAlreadyExists,
+    #[error("invalid subscription: {0}")]
+    InvalidSubscription(String),
+    #[error("plan upgrade required")]
+    PlanUpgradeRequired,
+    #[error("webhook verification failed")]
+    WebhookVerificationFailed,
+    #[error("provider api error: {0}")]
+    ProviderApiError(String),
 }

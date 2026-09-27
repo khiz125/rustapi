@@ -3,7 +3,7 @@ pub enum SubscriptionProvider {
     GooglePlay,
     AppStore,
     Stripe,
-    Paypay,
+    PayPay,
 }
 
 impl SubscriptionProvider {
@@ -12,7 +12,7 @@ impl SubscriptionProvider {
             SubscriptionProvider::GooglePlay => "google_play",
             SubscriptionProvider::AppStore => "app_store",
             SubscriptionProvider::Stripe => "stripte",
-            SubscriptionProvider::Paypay => "paypay",
+            SubscriptionProvider::PayPay => "paypay",
         }
     }
 
@@ -21,7 +21,7 @@ impl SubscriptionProvider {
             "google_play" => Some(SubscriptionProvider::GooglePlay),
             "app_store" => Some(SubscriptionProvider::AppStore),
             "stripe" => Some(SubscriptionProvider::Stripe),
-            "paypay" => Some(SubscriptionProvider::Paypay),
+            "paypay" => Some(SubscriptionProvider::PayPay),
             _ => None,
         }
     }
