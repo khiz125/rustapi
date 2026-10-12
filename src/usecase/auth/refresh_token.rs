@@ -16,13 +16,18 @@ pub struct RefreshTokenOutput {
     pub refresh_token: String,
 }
 
-pub struct RefreshTokenUsecase<R: UserRepository, RT: RefreshTokenRepository> {
+#[async_trait::async_trait]
+pub trait RefreshTokenUsecase: Send + Sync {
+    async fn execute(&self, input: RefreshTokenInput) -> Result<RefreshTokenOutput, DomainError>;
+}
+
+pub struct RefreshTokenUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
     user_repository: Arc<R>,
     refresh_token_repository: Arc<RT>,
     jwt_secret: String,
 }
 
-impl<R: UserRepository, RT: RefreshTokenRepository> RefreshTokenUsecase<R, RT> {
+impl<R: UserRepository, RT: RefreshTokenRepository> RefreshTokenUsecaseImpl<R, RT> {
     pub fn new(
         user_repository: Arc<R>,
         refresh_token_repository: Arc<RT>,
@@ -34,11 +39,15 @@ impl<R: UserRepository, RT: RefreshTokenRepository> RefreshTokenUsecase<R, RT> {
             jwt_secret,
         }
     }
+}
 
-    pub async fn execute(
-        &self,
-        input: RefreshTokenInput,
-    ) -> Result<RefreshTokenOutput, DomainError> {
+#[async_trait::async_trait]
+impl<R, RT> RefreshTokenUsecase for RefreshTokenUsecaseImpl<R, RT>
+where
+    R: UserRepository + Send + Sync,
+    RT: RefreshTokenRepository + Send + Sync,
+{
+    async fn execute(&self, input: RefreshTokenInput) -> Result<RefreshTokenOutput, DomainError> {
         let token_hash = hash_refresh_token(&input.refresh_token);
         let stored_token = self
             .refresh_token_repository

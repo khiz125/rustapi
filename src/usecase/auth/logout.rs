@@ -7,18 +7,29 @@ pub struct LogoutInput {
     pub refresh_token: String,
 }
 
-pub struct LogoutUsecase<RT: RefreshTokenRepository> {
+#[async_trait::async_trait]
+pub trait LogoutUsecase: Send + Sync {
+    async fn execute(&self, input: LogoutInput) -> Result<(), DomainError>;
+}
+
+pub struct LogoutUsecaseImpl<RT: RefreshTokenRepository> {
     refresh_token_repository: Arc<RT>,
 }
 
-impl<RT: RefreshTokenRepository> LogoutUsecase<RT> {
+impl<RT: RefreshTokenRepository> LogoutUsecaseImpl<RT> {
     pub fn new(refresh_token_repository: Arc<RT>) -> Self {
         Self {
             refresh_token_repository,
         }
     }
+}
 
-    pub async fn execute(&self, input: LogoutInput) -> Result<(), DomainError> {
+#[async_trait::async_trait]
+impl<RT> LogoutUsecase for LogoutUsecaseImpl<RT>
+where
+    RT: RefreshTokenRepository + Send + Sync,
+{
+    async fn execute(&self, input: LogoutInput) -> Result<(), DomainError> {
         let token_hash = hash_refresh_token(&input.refresh_token);
 
         let stored_token = self

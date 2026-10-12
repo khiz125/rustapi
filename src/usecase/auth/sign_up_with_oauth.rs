@@ -2,12 +2,9 @@ use crate::domain::error::DomainError;
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::NewUser;
 use crate::domain::user::repository::UserRepository;
-use crate::domain::user::vo::{Email, OAuthProvider, ProviderUserId, UserId, UserName};
-use crate::usecase::auth::token::{
-    generate_refresh_token, hash_refresh_token, issue_token, issue_tokens,
-};
+use crate::domain::user::vo::{Email, OAuthProvider, ProviderUserId, UserName};
+use crate::usecase::auth::token::issue_tokens;
 
-use chrono::Utc;
 use std::sync::Arc;
 
 pub struct SignUpWithOAuthInput {
@@ -24,13 +21,21 @@ pub struct SignUpWithOAuthOutput {
     pub is_new_user: bool,
 }
 
-pub struct SignUpWithOAuthUsecase<R: UserRepository, RT: RefreshTokenRepository> {
+#[async_trait::async_trait]
+pub trait SignUpWithOAuthUsecase: Send + Sync {
+    async fn execute(
+        &self,
+        input: SignUpWithOAuthInput,
+    ) -> Result<SignUpWithOAuthOutput, DomainError>;
+}
+
+pub struct SignUpWithOAuthUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
     user_repository: Arc<R>,
     refresh_token_repository: Arc<RT>,
     jwt_secret: String,
 }
 
-impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithOAuthUsecase<R, RT> {
+impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithOAuthUsecaseImpl<R, RT> {
     pub fn new(
         user_repository: Arc<R>,
         refresh_token_repository: Arc<RT>,
@@ -42,8 +47,15 @@ impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithOAuthUsecase<R, RT
             jwt_secret,
         }
     }
+}
 
-    pub async fn execute(
+#[async_trait::async_trait]
+impl<R, RT> SignUpWithOAuthUsecase for SignUpWithOAuthUsecaseImpl<R, RT>
+where
+    R: UserRepository + Send + Sync,
+    RT: RefreshTokenRepository + Send + Sync,
+{
+    async fn execute(
         &self,
         input: SignUpWithOAuthInput,
     ) -> Result<SignUpWithOAuthOutput, DomainError> {
@@ -101,14 +113,18 @@ mod tests {
     use crate::domain::user::User;
     use crate::domain::user::vo::{UserId, UserPlan};
     use crate::domain::user::{repository::MockUserRepository, user_auth::UserAuth};
-
+    use chrono::Utc;
     use std::sync::Arc;
 
     fn make_usecase(
         mock: MockUserRepository,
         mock_rt: MockRefreshTokenRepository,
-    ) -> SignUpWithOAuthUsecase<MockUserRepository, MockRefreshTokenRepository> {
-        SignUpWithOAuthUsecase::new(Arc::new(mock), Arc::new(mock_rt), "test_secret".to_string())
+    ) -> SignUpWithOAuthUsecaseImpl<MockUserRepository, MockRefreshTokenRepository> {
+        SignUpWithOAuthUsecaseImpl::new(
+            Arc::new(mock),
+            Arc::new(mock_rt),
+            "test_secret".to_string(),
+        )
     }
 
     fn to_user(new_user: NewUser, id: i64) -> User {

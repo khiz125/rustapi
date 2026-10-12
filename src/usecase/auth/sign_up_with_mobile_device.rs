@@ -19,13 +19,21 @@ pub struct SignUpWithMobileDeviceOutput {
     pub is_new_user: bool,
 }
 
-pub struct SignUpWithMobileDeviceUsecase<R: UserRepository, RT: RefreshTokenRepository> {
-    user_repository: Arc<R>,
-    refresh_token_repository: Arc<RT>,
-    jwt_token: String,
+#[async_trait::async_trait]
+pub trait SignUpWithMobileDeviceUsecase: Send + Sync {
+    async fn execute(
+        &self,
+        input: SignUpWithMobileDeviceInput,
+    ) -> Result<SignUpWithMobileDeviceOutput, DomainError>;
 }
 
-impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithMobileDeviceUsecase<R, RT> {
+pub struct SignUpWithMobileDeviceUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
+    user_repository: Arc<R>,
+    refresh_token_repository: Arc<RT>,
+    jwt_secret: String,
+}
+
+impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithMobileDeviceUsecaseImpl<R, RT> {
     pub fn new(
         user_repository: Arc<R>,
         refresh_token_repository: Arc<RT>,
@@ -37,8 +45,15 @@ impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithMobileDeviceUsecas
             jwt_token,
         }
     }
+}
 
-    pub async fn execute(
+#[async_trait::async_trait]
+impl<R, RT> SignUpWithMobileDeviceUsecase for SignUpWithMobileDeviceUsecaseImpl<R, RT>
+where
+    R: UserRepository + Send + Sync,
+    RT: RefreshTokenRepository + Send + Sync,
+{
+    async fn execute(
         &self,
         input: SignUpWithMobileDeviceInput,
     ) -> Result<SignUpWithMobileDeviceOutput, DomainError> {
@@ -104,8 +119,8 @@ mod tests {
     fn make_usecase(
         mock: MockUserRepository,
         mock_rt: MockRefreshTokenRepository,
-    ) -> SignUpWithMobileDeviceUsecase<MockUserRepository, MockRefreshTokenRepository> {
-        SignUpWithMobileDeviceUsecase::new(
+    ) -> SignUpWithMobileDeviceUsecaseImpl<MockUserRepository, MockRefreshTokenRepository> {
+        SignUpWithMobileDeviceUsecaseImpl::new(
             Arc::new(mock),
             Arc::new(mock_rt),
             "test_secret".to_string(),

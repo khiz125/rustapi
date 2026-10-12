@@ -1,5 +1,3 @@
-use chrono::Utc;
-
 use crate::domain::error::DomainError;
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::repository::UserRepository;
@@ -7,6 +5,7 @@ use crate::domain::user::user_auth::AuthMethod;
 use crate::domain::user::vo::email::Email;
 use crate::usecase::auth::password_crypto::verify_password;
 use crate::usecase::auth::token::{generate_refresh_token, hash_refresh_token, issue_token};
+use chrono::Utc;
 use std::sync::Arc;
 
 pub struct LoginWithEmailInput {
@@ -20,13 +19,21 @@ pub struct LoginWithEmailOutput {
     pub refresh_token: String,
 }
 
-pub struct LoginWithEmailUsecase<R: UserRepository, RT: RefreshTokenRepository> {
-    user_repository: Arc<R>,
-    jwt_secret: String,
-    refresh_token_repository: Arc<RT>,
+#[async_trait::async_trait]
+pub trait LoginWithEmailUsecase: Send + Sync {
+    async fn execute(
+        &self,
+        input: LoginWithEmailInput,
+    ) -> Result<LoginWithEmailOutput, DomainError>;
 }
 
-impl<R: UserRepository, RT: RefreshTokenRepository> LoginWithEmailUsecase<R, RT> {
+pub struct LoginWithEmailUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
+    user_repository: Arc<R>,
+    refresh_token_repository: Arc<RT>,
+    jwt_secret: String,
+}
+
+impl<R: UserRepository, RT: RefreshTokenRepository> LoginWithEmailUsecaseImpl<R, RT> {
     pub fn new(
         user_repository: Arc<R>,
         refresh_token_repository: Arc<RT>,
@@ -38,8 +45,15 @@ impl<R: UserRepository, RT: RefreshTokenRepository> LoginWithEmailUsecase<R, RT>
             jwt_secret,
         }
     }
+}
 
-    pub async fn execute(
+#[async_trait::async_trait]
+impl<R, RT> LoginWithEmailUsecase for LoginWithEmailUsecaseImpl<R, RT>
+where
+    R: UserRepository + Send + Sync,
+    RT: RefreshTokenRepository + Send + Sync,
+{
+    async fn execute(
         &self,
         input: LoginWithEmailInput,
     ) -> Result<LoginWithEmailOutput, DomainError> {
@@ -92,8 +106,8 @@ mod tests {
     fn make_usecase(
         mock: MockUserRepository,
         mock_rt: MockRefreshTokenRepository,
-    ) -> LoginWithEmailUsecase<MockUserRepository, MockRefreshTokenRepository> {
-        LoginWithEmailUsecase::new(Arc::new(mock), Arc::new(mock_rt), "test_secret".to_string())
+    ) -> LoginWithEmailUsecaseImpl<MockUserRepository, MockRefreshTokenRepository> {
+        LoginWithEmailUsecaseImpl::new(Arc::new(mock), Arc::new(mock_rt), "test_secret".to_string())
     }
 
     fn make_user(raw_password: &str) -> User {

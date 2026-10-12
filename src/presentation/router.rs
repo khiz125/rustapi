@@ -1,14 +1,16 @@
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
+use crate::domain::subscription::repository::SubscriptionRepository;
 use crate::domain::user::repository::UserRepository;
 use crate::presentation::handler::{auth, mobile, oauth, user};
 use crate::presentation::state::AppState;
 use axum::Router;
 use axum::routing::{get, post, put};
 
-pub fn create_router<R, RT>(state: AppState<R, RT>) -> Router
+pub fn create_router<R, RT, S>(state: AppState<R, RT, S>) -> Router
 where
     R: UserRepository + Clone + Send + Sync + 'static,
     RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
+    S: SubscriptionRepository + Clone + Send + Sync + 'static,
 {
     Router::new()
         .route("/auth/signup", post(auth::sign_up::<R, RT>))

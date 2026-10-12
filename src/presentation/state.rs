@@ -1,4 +1,5 @@
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
+use crate::domain::subscription::repository::SubscriptionRepository;
 use crate::domain::user::repository::UserRepository;
 use crate::infra::oauth::google::GoogleOAuthClient;
 use crate::usecase::auth::login_with_email::LoginWithEmailUsecase;
@@ -7,6 +8,8 @@ use crate::usecase::auth::refresh_token::RefreshTokenUsecase;
 use crate::usecase::auth::sign_up_with_email::SignUpWithEmailUsecase;
 use crate::usecase::auth::sign_up_with_mobile_device::SignUpWithMobileDeviceUsecase;
 use crate::usecase::auth::sign_up_with_oauth::SignUpWithOAuthUsecase;
+use crate::usecase::subscription::handle_webhook::HandleWebhookUsecase;
+use crate::usecase::subscription::verify_subscription::VerifySubscriptionUsecase;
 use crate::usecase::user::get_me::GetMeUsecase;
 use crate::usecase::user::update_name::UpdateNameUsecase;
 use crate::usecase::user::update_password::UpdatePasswordUsecase;
@@ -14,10 +17,11 @@ use crate::usecase::user::update_plan::UpdatePlanUsecase;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct AppState<R, RT>
+pub struct AppState<R, RT, S>
 where
     R: UserRepository + Clone,
     RT: RefreshTokenRepository + Clone,
+    S: SubscriptionRepository + Clone,
 {
     pub sign_up: Arc<SignUpWithEmailUsecase<R, RT>>,
     pub login: Arc<LoginWithEmailUsecase<R, RT>>,
@@ -30,4 +34,6 @@ where
     pub sign_up_with_oauth: Arc<SignUpWithOAuthUsecase<R, RT>>,
     pub sign_up_with_mobile_device: Arc<SignUpWithMobileDeviceUsecase<R, RT>>,
     pub google_oauth_client: Arc<GoogleOAuthClient>,
+    pub verify_subscription: Arc<VerifySubscriptionUsecase<R, S>>,
+    pub handle_webhook: Arc<HandleWebhookUsecase<R, S>>,
 }
