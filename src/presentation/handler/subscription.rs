@@ -25,17 +25,12 @@ pub struct VerifySubscriptionResponse {
     pub expires_at: DateTime<Utc>,
 }
 
-async fn verify_subscription<R, RT, S>(
-    state: &AppState<R, RT, S>,
+async fn verify_subscription(
+    state: AppState,
     user_id: i64,
     provider: SubscriptionProvider,
     body: VerifySubscriptionRequest,
-) -> Result<impl IntoResponse + use<R, RT, S>, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-    S: SubscriptionRepository + Clone + Send + Sync + 'static,
-{
+) -> Result<impl IntoResponse, AppError> {
     let output = state
         .verify_subscription
         .execute(VerifySubscriptionInput {
@@ -55,54 +50,34 @@ where
     ))
 }
 
-pub async fn verify_google_play<R, RT, S>(
-    State(state): State<AppState<R, RT, S>>,
+pub async fn verify_google_play(
+    State(state): State<AppState>,
     AuthUser(claims): AuthUser,
     Json(body): Json<VerifySubscriptionRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-    S: SubscriptionRepository + Clone + Send + Sync + 'static,
-{
-    verify_subscription(&state, claims.sub, SubscriptionProvider::GooglePlay, body).await
+) -> Result<impl IntoResponse, AppError> {
+    verify_subscription(state, claims.sub, SubscriptionProvider::GooglePlay, body).await
 }
 
-pub async fn verify_app_store<R, RT, S>(
-    State(state): State<AppState<R, RT, S>>,
+pub async fn verify_app_store(
+    State(state): State<AppState>,
     AuthUser(claims): AuthUser,
     Json(body): Json<VerifySubscriptionRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-    S: SubscriptionRepository + Clone + Send + Sync + 'static,
-{
-    verify_subscription(&state, claims.sub, SubscriptionProvider::AppStore, body).await
+) -> Result<impl IntoResponse, AppError> {
+    verify_subscription(state, claims.sub, SubscriptionProvider::AppStore, body).await
 }
 
-pub async fn verify_stripe<R, RT, S>(
-    State(state): State<AppState<R, RT, S>>,
+pub async fn verify_stripe(
+    State(state): State<AppState>,
     AuthUser(claims): AuthUser,
     Json(body): Json<VerifySubscriptionRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-    S: SubscriptionRepository + Clone + Send + Sync + 'static,
-{
-    verify_subscription(&state, claims.sub, SubscriptionProvider::Stripe, body).await
+) -> Result<impl IntoResponse, AppError> {
+    verify_subscription(state, claims.sub, SubscriptionProvider::Stripe, body).await
 }
 
-pub async fn verify_paypay<R, RT, S>(
-    State(state): State<AppState<R, RT, S>>,
+pub async fn verify_paypay(
+    State(state): State<AppState>,
     AuthUser(claims): AuthUser,
     Json(body): Json<VerifySubscriptionRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-    S: SubscriptionRepository + Clone + Send + Sync + 'static,
-{
-    verify_subscription(&state, claims.sub, SubscriptionProvider::PayPay, body).await
+) -> Result<impl IntoResponse, AppError> {
+    verify_subscription(state, claims.sub, SubscriptionProvider::PayPay, body).await
 }

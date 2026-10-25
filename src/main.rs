@@ -4,26 +4,29 @@ mod middleware;
 mod presentation;
 mod usecase;
 
+use crate::infra::database::connection::create_pool;
+use crate::infra::subscription::repository::PgSubscriptionRepository;
+use crate::usecase::auth::logout::LogoutUsecaseImpl;
+use crate::usecase::auth::sign_up_with_email::SignUpWithEmailUsecaseImpl;
+use crate::usecase::auth::sign_up_with_mobile_device::SignUpWithMobileDeviceUsecaseImpl;
+use crate::usecase::subscription::handle_webhook::HandleWebhookUsecaseImpl;
+use crate::usecase::subscription::verify_subscription::VerifySubscriptionUsecaseImpl;
+use crate::usecase::user::get_me::GetMeUsecaseImpl;
+use crate::usecase::user::update_name::UpdateNameUsecaseImpl;
+use crate::usecase::user::update_plan::UpdatePlanUsecaseImpl;
 use infra::oauth::google::GoogleOAuthClient;
 use infra::refresh_token::repository::PgRefreshTokenRepository;
 use infra::user::repository::PgUserRepository;
 use presentation::router::create_router;
 use presentation::state::AppState;
-use usecase::auth::login_with_email::LoginWithEmailUsecase;
-use usecase::auth::refresh_token::RefreshTokenUsecase;
-use usecase::auth::sign_up_with_email::SignUpWithEmailUsecase;
-use usecase::auth::sign_up_with_oauth::SignUpWithOAuthUsecase;
-use usecase::user::update_password::UpdatePasswordUsecase;
+
+use usecase::auth::login_with_email::LoginWithEmailUsecaseImpl;
+use usecase::auth::refresh_token::RefreshTokenUsecaseImpl;
+use usecase::auth::sign_up_with_oauth::SignUpWithOAuthUsecaseImpl;
+use usecase::user::update_password::UpdatePasswordUsecaseImpl;
 
 use std::env;
 use std::sync::Arc;
-
-use crate::infra::database::connection::create_pool;
-use crate::usecase::auth::logout::LogoutUsecase;
-use crate::usecase::auth::sign_up_with_mobile_device::SignUpWithMobileDeviceUsecase;
-use crate::usecase::user::get_me::GetMeUsecase;
-use crate::usecase::user::update_name::UpdateNameUsecase;
-use crate::usecase::user::update_plan::UpdatePlanUsecase;
 
 #[tokio::main]
 async fn main() {
@@ -49,37 +52,47 @@ async fn main() {
         .expect("Failed to connect to database");
 
     let user_repository = Arc::new(PgUserRepository::new(pool.clone()));
-    let refresh_token_repository = Arc::new(PgRefreshTokenRepository::new(pool));
+    let refresh_token_repository = Arc::new(PgRefreshTokenRepository::new(pool.clone()));
+    let subscription_repository = Arc::new(PgSubscriptionRepository::new(pool.clone()));
+
     let state = AppState {
-        sign_up: Arc::new(SignUpWithEmailUsecase::new(
+        sign_up: Arc::new(SignUpWithEmailUsecaseImpl::new(
             user_repository.clone(),
             refresh_token_repository.clone(),
             jwt_secret.clone(),
         )),
-        login: Arc::new(LoginWithEmailUsecase::new(
+        login: Arc::new(LoginWithEmailUsecaseImpl::new(
             user_repository.clone(),
             refresh_token_repository.clone(),
             jwt_secret.clone(),
         )),
-        logout: Arc::new(LogoutUsecase::new(refresh_token_repository.clone())),
-        refresh_token: Arc::new(RefreshTokenUsecase::new(
+        logout: Arc::new(LogoutUsecaseImpl::new(refresh_token_repository.clone())),
+        refresh_token: Arc::new(RefreshTokenUsecaseImpl::new(
             user_repository.clone(),
             refresh_token_repository.clone(),
             jwt_secret.clone(),
         )),
-        update_password: Arc::new(UpdatePasswordUsecase::new(user_repository.clone())),
-        update_name: Arc::new(UpdateNameUsecase::new(user_repository.clone())),
-        update_plan: Arc::new(UpdatePlanUsecase::new(user_repository.clone())),
-        get_me: Arc::new(GetMeUsecase::new(user_repository.clone())),
-        sign_up_with_oauth: Arc::new(SignUpWithOAuthUsecase::new(
+        update_password: Arc::new(UpdatePasswordUsecaseImpl::new(user_repository.clone())),
+        update_name: Arc::new(UpdateNameUsecaseImpl::new(user_repository.clone())),
+        update_plan: Arc::new(UpdatePlanUsecaseImpl::new(user_repository.clone())),
+        get_me: Arc::new(GetMeUsecaseImpl::new(user_repository.clone())),
+        sign_up_with_oauth: Arc::new(SignUpWithOAuthUsecaseImpl::new(
             user_repository.clone(),
             refresh_token_repository.clone(),
             jwt_secret.clone(),
         )),
-        sign_up_with_mobile_device: Arc::new(SignUpWithMobileDeviceUsecase::new(
+        sign_up_with_mobile_device: Arc::new(SignUpWithMobileDeviceUsecaseImpl::new(
             user_repository.clone(),
             refresh_token_repository.clone(),
             jwt_secret.clone(),
+        )),
+        verify_subscription: Arc::new(VerifySubscriptionUsecaseImpl::new(
+            user_repository.clone(),
+            subscription_repository.clone(),
+        )),
+        handle_webhook: Arc::new(HandleWebhookUsecaseImpl::new(
+            user_repository.clone(),
+            subscription_repository.clone(),
         )),
         google_oauth_client,
     };

@@ -19,16 +19,27 @@ pub struct GetMeOutput {
     pub created_at: DateTime<Utc>,
 }
 
-pub struct GetMeUsecase<R: UserRepository> {
+#[async_trait::async_trait]
+pub trait GetMeUsecase: Send + Sync {
+    async fn execute(&self, input: GetMeInput) -> Result<GetMeOutput, DomainError>;
+}
+
+pub struct GetMeUsecaseImpl<R: UserRepository> {
     user_repository: Arc<R>,
 }
 
-impl<R: UserRepository> GetMeUsecase<R> {
+impl<R: UserRepository> GetMeUsecaseImpl<R> {
     pub fn new(user_repository: Arc<R>) -> Self {
         Self { user_repository }
     }
+}
 
-    pub async fn execute(&self, input: GetMeInput) -> Result<GetMeOutput, DomainError> {
+#[async_trait::async_trait]
+impl<R> GetMeUsecase for GetMeUsecaseImpl<R>
+where
+    R: UserRepository + Send + Sync,
+{
+    async fn execute(&self, input: GetMeInput) -> Result<GetMeOutput, DomainError> {
         let user = self
             .user_repository
             .find_by_id(UserId::new(input.user_id))

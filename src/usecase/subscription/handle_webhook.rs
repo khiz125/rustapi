@@ -24,20 +24,32 @@ pub struct HandleWebhookInput {
     pub event: WebhookEvent,
 }
 
-pub struct HandleWebhookUsecase<R: UserRepository, S: SubscriptionRepository> {
+#[async_trait::async_trait]
+pub trait HandleWebhookUsecase: Send + Sync {
+    async fn execute(&self, input: HandleWebhookInput) -> Result<(), DomainError>;
+}
+
+pub struct HandleWebhookUsecaseImpl<R: UserRepository, S: SubscriptionRepository> {
     user_repository: Arc<R>,
     subscription_repository: Arc<S>,
 }
 
-impl<R: UserRepository, S: SubscriptionRepository> HandleWebhookUsecase<R, S> {
+impl<R: UserRepository, S: SubscriptionRepository> HandleWebhookUsecaseImpl<R, S> {
     pub fn new(user_repository: Arc<R>, subscription_repository: Arc<S>) -> Self {
         Self {
             user_repository,
             subscription_repository,
         }
     }
+}
 
-    pub async fn execute(&self, input: HandleWebhookInput) -> Result<(), DomainError> {
+#[async_trait::async_trait]
+impl<R, S> HandleWebhookUsecase for HandleWebhookUsecaseImpl<R, S>
+where
+    R: UserRepository + Send + Sync,
+    S: SubscriptionRepository + Send + Sync,
+{
+    async fn execute(&self, input: HandleWebhookInput) -> Result<(), DomainError> {
         let provider_subscription_id = ProviderSubscriptionId::new(input.provider_subscription_id);
 
         match input.event {

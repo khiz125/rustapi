@@ -11,16 +11,27 @@ pub struct UpdatePasswordInput {
     pub new_password: String,
 }
 
-pub struct UpdatePasswordUsecase<R: UserRepository> {
+#[async_trait::async_trait]
+pub trait UpdatePasswordUsecase: Send + Sync {
+    async fn execute(&self, input: UpdatePasswordInput) -> Result<(), DomainError>;
+}
+
+pub struct UpdatePasswordUsecaseImpl<R: UserRepository> {
     user_repository: Arc<R>,
 }
 
-impl<R: UserRepository> UpdatePasswordUsecase<R> {
+impl<R: UserRepository> UpdatePasswordUsecaseImpl<R> {
     pub fn new(user_repository: Arc<R>) -> Self {
         Self { user_repository }
     }
+}
 
-    pub async fn execute(&self, input: UpdatePasswordInput) -> Result<(), DomainError> {
+#[async_trait::async_trait]
+impl<R> UpdatePasswordUsecase for UpdatePasswordUsecaseImpl<R>
+where
+    R: UserRepository + Send + Sync,
+{
+    async fn execute(&self, input: UpdatePasswordInput) -> Result<(), DomainError> {
         let user_id = UserId::new(input.user_id);
 
         let mut user = self
@@ -59,8 +70,8 @@ mod tests {
     use crate::usecase::auth::password_crypto::hash_password;
     use std::sync::Arc;
 
-    fn make_usecase(mock: MockUserRepository) -> UpdatePasswordUsecase<MockUserRepository> {
-        UpdatePasswordUsecase::new(Arc::new(mock))
+    fn make_usecase(mock: MockUserRepository) -> UpdatePasswordUsecaseImpl<MockUserRepository> {
+        UpdatePasswordUsecaseImpl::new(Arc::new(mock))
     }
 
     fn make_user(raw_password: &str) -> User {

@@ -1,5 +1,3 @@
-use crate::domain::refresh_token::repository::RefreshTokenRepository;
-use crate::domain::user::repository::UserRepository;
 use crate::presentation::error::AppError;
 use crate::presentation::state::AppState;
 use crate::usecase::auth::sign_up_with_mobile_device::SignUpWithMobileDeviceInput;
@@ -22,14 +20,10 @@ pub struct MobileDeviceResponse {
     pub is_new_user: bool,
 }
 
-pub async fn sign_up_with_mobile_device<R, RT>(
-    State(state): State<AppState<R, RT>>,
+pub async fn sign_up_with_mobile_device(
+    State(state): State<AppState>,
     Json(body): Json<MobileDeviceRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-{
+) -> Result<impl IntoResponse, AppError> {
     let output = state
         .sign_up_with_mobile_device
         .execute(SignUpWithMobileDeviceInput {

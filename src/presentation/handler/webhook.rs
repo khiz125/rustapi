@@ -4,7 +4,7 @@ use crate::domain::subscription::repository::SubscriptionRepository;
 use crate::domain::subscription::vo::SubscriptionProvider;
 use crate::domain::user::repository::UserRepository;
 use crate::presentation::error::AppError;
-use crate::presentation::state::{self, AppState};
+use crate::presentation::state::AppState;
 use crate::usecase::subscription::handle_webhook::{HandleWebhookInput, WebhookEvent};
 use axum::Json;
 use axum::extract::State;
@@ -20,16 +20,13 @@ pub struct WebhookRequest {
     pub new_expires_at: Option<DateTime<Utc>>,
 }
 
-async fn handle_webhook<R, RT, S, F>(
-    state: &AppState<R, RT, S>,
+async fn handle_webhook<F>(
+    state: AppState,
     provider: SubscriptionProvider,
     body: WebhookRequest,
     event_mapper: F,
-) -> Result<impl IntoResponse + use<R, RT, S, F>, AppError>
+) -> Result<impl IntoResponse, AppError>
 where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-    S: SubscriptionRepository + Clone + Send + Sync + 'static,
     F: Fn(&str, Option<DateTime<Utc>>) -> Result<WebhookEvent, DomainError>,
 {
     let event = event_mapper(&body.event_type, body.new_expires_at)?;
@@ -133,18 +130,13 @@ fn paypay_event_mapper(
     }
 }
 
-pub async fn google_play_webhook<R, RT, S>(
-    State(state): State<AppState<R, RT, S>>,
+pub async fn google_play_webhook(
+    State(state): State<AppState>,
     Json(body): Json<WebhookRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-    S: SubscriptionRepository + Clone + Send + Sync + 'static,
-{
+) -> Result<impl IntoResponse, AppError> {
     // TODO: Google Cloud Pub/Sub の署名検証
     handle_webhook(
-        &state,
+        state,
         SubscriptionProvider::GooglePlay,
         body,
         google_play_event_mapper,
@@ -152,18 +144,13 @@ where
     .await
 }
 
-pub async fn app_store_webhook<R, RT, S>(
-    State(state): State<AppState<R, RT, S>>,
+pub async fn app_store_webhook(
+    State(state): State<AppState>,
     Json(body): Json<WebhookRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-    S: SubscriptionRepository + Clone + Send + Sync + 'static,
-{
+) -> Result<impl IntoResponse, AppError> {
     // TODO: App Store の署名検証
     handle_webhook(
-        &state,
+        state,
         SubscriptionProvider::AppStore,
         body,
         app_store_event_mapper,
@@ -171,18 +158,13 @@ where
     .await
 }
 
-pub async fn stripe_webhook<R, RT, S>(
-    State(state): State<AppState<R, RT, S>>,
+pub async fn stripe_webhook(
+    State(state): State<AppState>,
     Json(body): Json<WebhookRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-    S: SubscriptionRepository + Clone + Send + Sync + 'static,
-{
+) -> Result<impl IntoResponse, AppError> {
     // TODO: Stripe-Signature ヘッダーの署名検証
     handle_webhook(
-        &state,
+        state,
         SubscriptionProvider::Stripe,
         body,
         stripe_event_mapper,
@@ -190,18 +172,13 @@ where
     .await
 }
 
-pub async fn paypay_webhook<R, RT, S>(
-    State(state): State<AppState<R, RT, S>>,
+pub async fn paypay_webhook(
+    State(state): State<AppState>,
     Json(body): Json<WebhookRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-    S: SubscriptionRepository + Clone + Send + Sync + 'static,
-{
+) -> Result<impl IntoResponse, AppError> {
     // TODO: PayPay の署名検証
     handle_webhook(
-        &state,
+        state,
         SubscriptionProvider::PayPay,
         body,
         paypay_event_mapper,

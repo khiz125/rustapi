@@ -36,14 +36,10 @@ pub struct UpdateNameRequest {
     pub new_name: String,
 }
 
-pub async fn get_me<R, RT>(
-    State(state): State<AppState<R, RT>>,
+pub async fn get_me(
+    State(state): State<AppState>,
     AuthUser(claims): AuthUser,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-{
+) -> Result<impl IntoResponse, AppError> {
     let output = state
         .get_me
         .execute(GetMeInput {
@@ -62,15 +58,11 @@ where
     }))
 }
 
-pub async fn update_password<R, RT>(
-    State(state): State<AppState<R, RT>>,
+pub async fn update_password(
+    State(state): State<AppState>,
     AuthUser(claims): AuthUser,
     body: Result<Json<UpdatePasswordRequest>, JsonRejection>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone,
-    RT: RefreshTokenRepository + Clone,
-{
+) -> Result<impl IntoResponse, AppError> {
     let Json(body) = body.map_err(|e| DomainError::InvalidRequest(e.to_string()))?;
 
     state
@@ -85,15 +77,11 @@ where
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub async fn update_name<R, RT>(
-    State(state): State<AppState<R, RT>>,
+pub async fn update_name(
+    State(state): State<AppState>,
     AuthUser(claims): AuthUser,
     body: Result<Json<UpdateNameRequest>, JsonRejection>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone,
-    RT: RefreshTokenRepository + Clone,
-{
+) -> Result<impl IntoResponse, AppError> {
     let Json(body) = body.map_err(|e| DomainError::InvalidRequest(e.to_string()))?;
 
     state

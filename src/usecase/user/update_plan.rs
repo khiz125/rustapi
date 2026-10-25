@@ -10,16 +10,27 @@ pub struct UpdatePlanInput {
     pub plan_expires_at: Option<DateTime<Utc>>,
 }
 
-pub struct UpdatePlanUsecase<R: UserRepository> {
+#[async_trait::async_trait]
+pub trait UpdatePlanUsecase: Send + Sync {
+    async fn execute(&self, input: UpdatePlanInput) -> Result<(), DomainError>;
+}
+
+pub struct UpdatePlanUsecaseImpl<R: UserRepository> {
     user_repository: Arc<R>,
 }
 
-impl<R: UserRepository> UpdatePlanUsecase<R> {
+impl<R: UserRepository> UpdatePlanUsecaseImpl<R> {
     pub fn new(user_repository: Arc<R>) -> Self {
         Self { user_repository }
     }
+}
 
-    pub async fn execute(&self, input: UpdatePlanInput) -> Result<(), DomainError> {
+#[async_trait::async_trait]
+impl<R> UpdatePlanUsecase for UpdatePlanUsecaseImpl<R>
+where
+    R: UserRepository + Send + Sync,
+{
+    async fn execute(&self, input: UpdatePlanInput) -> Result<(), DomainError> {
         let user_id = UserId::new(input.user_id);
 
         self.user_repository

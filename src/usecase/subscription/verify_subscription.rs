@@ -19,20 +19,35 @@ pub struct VerifySubscriptionOutput {
     pub expires_at: DateTime<Utc>,
 }
 
-pub struct VerifySubscriptionUsecase<R: UserRepository, S: SubscriptionRepository> {
+#[async_trait::async_trait]
+pub trait VerifySubscriptionUsecase: Send + Sync {
+    async fn execute(
+        &self,
+        input: VerifySubscriptionInput,
+    ) -> Result<VerifySubscriptionOutput, DomainError>;
+}
+
+pub struct VerifySubscriptionUsecaseImpl<R: UserRepository, S: SubscriptionRepository> {
     user_repository: Arc<R>,
     subscription_repository: Arc<S>,
 }
 
-impl<R: UserRepository, S: SubscriptionRepository> VerifySubscriptionUsecase<R, S> {
+impl<R: UserRepository, S: SubscriptionRepository> VerifySubscriptionUsecaseImpl<R, S> {
     pub fn new(user_repository: Arc<R>, subscription_repository: Arc<S>) -> Self {
         Self {
             user_repository,
             subscription_repository,
         }
     }
+}
 
-    pub async fn execute(
+#[async_trait::async_trait]
+impl<R, S> VerifySubscriptionUsecase for VerifySubscriptionUsecaseImpl<R, S>
+where
+    R: UserRepository + Send + Sync,
+    S: SubscriptionRepository + Send + Sync,
+{
+    async fn execute(
         &self,
         input: VerifySubscriptionInput,
     ) -> Result<VerifySubscriptionOutput, DomainError> {

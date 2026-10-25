@@ -8,16 +8,27 @@ pub struct UpdateNameInput {
     pub new_name: String,
 }
 
-pub struct UpdateNameUsecase<R: UserRepository> {
+#[async_trait::async_trait]
+pub trait UpdateNameUsecase: Send + Sync {
+    async fn execute(&self, input: UpdateNameInput) -> Result<(), DomainError>;
+}
+
+pub struct UpdateNameUsecaseImpl<R: UserRepository> {
     user_repository: Arc<R>,
 }
 
-impl<R: UserRepository> UpdateNameUsecase<R> {
+impl<R: UserRepository> UpdateNameUsecaseImpl<R> {
     pub fn new(user_repository: Arc<R>) -> Self {
         Self { user_repository }
     }
+}
 
-    pub async fn execute(&self, input: UpdateNameInput) -> Result<(), DomainError> {
+#[async_trait::async_trait]
+impl<R> UpdateNameUsecase for UpdateNameUsecaseImpl<R>
+where
+    R: UserRepository + Send + Sync,
+{
+    async fn execute(&self, input: UpdateNameInput) -> Result<(), DomainError> {
         let user_id = UserId::new(input.user_id);
 
         let user = self

@@ -37,12 +37,12 @@ impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithMobileDeviceUsecas
     pub fn new(
         user_repository: Arc<R>,
         refresh_token_repository: Arc<RT>,
-        jwt_token: String,
+        jwt_secret: String,
     ) -> Self {
         Self {
             user_repository,
             refresh_token_repository,
-            jwt_token,
+            jwt_secret,
         }
     }
 }
@@ -60,8 +60,11 @@ where
         let device_id = DeviceId::new(input.device_id);
         {
             if let Some(existing) = self.user_repository.find_by_device_id(&device_id).await? {
-                let access_token =
-                    issue_token(existing.id.value(), &self.jwt_token, existing.plan.as_str())?;
+                let access_token = issue_token(
+                    existing.id.value(),
+                    &self.jwt_secret,
+                    existing.plan.as_str(),
+                )?;
                 let refresh_token = generate_refresh_token();
                 let token_hash = hash_refresh_token(&refresh_token);
                 let expires_at = Utc::now() + chrono::Duration::days(30);
@@ -85,7 +88,8 @@ where
         let user_name = UserName::new(name)?;
         let new_user = NewUser::new_mobile_device(user_name, device_id);
         let created = self.user_repository.create(new_user).await?;
-        let access_token = issue_token(created.id.value(), &self.jwt_token, created.plan.as_str())?;
+        let access_token =
+            issue_token(created.id.value(), &self.jwt_secret, created.plan.as_str())?;
         let refresh_token = generate_refresh_token();
         let token_hash = hash_refresh_token(&refresh_token);
         let expires_at = Utc::now() + chrono::Duration::days(30);

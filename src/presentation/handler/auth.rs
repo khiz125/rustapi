@@ -1,6 +1,4 @@
 use crate::domain::error::DomainError;
-use crate::domain::refresh_token::repository::RefreshTokenRepository;
-use crate::domain::user::repository::UserRepository;
 use crate::presentation::error::AppError;
 use crate::presentation::state::AppState;
 use crate::usecase::auth::login_with_email::LoginWithEmailInput;
@@ -57,15 +55,11 @@ pub struct LogoutRequest {
     pub refresh_token: String,
 }
 
-pub async fn web_login<R, RT>(
-    State(state): State<AppState<R, RT>>,
+pub async fn web_login(
+    State(state): State<AppState>,
     jar: CookieJar,
     Json(body): Json<LoginRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone,
-    RT: RefreshTokenRepository + Clone,
-{
+) -> Result<impl IntoResponse, AppError> {
     let output = state
         .login
         .execute(LoginWithEmailInput {
@@ -91,14 +85,10 @@ where
     ))
 }
 
-pub async fn web_logout<R, RT>(
-    State(state): State<AppState<R, RT>>,
+pub async fn web_logout(
+    State(state): State<AppState>,
     jar: CookieJar,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-{
+) -> Result<impl IntoResponse, AppError> {
     let refresh_token = jar
         .get("refresh_token")
         .map(|c| c.value().to_string())
@@ -117,14 +107,10 @@ where
     Ok((jar.remove(cookie), StatusCode::NO_CONTENT))
 }
 
-pub async fn mobile_logout<R, RT>(
-    State(state): State<AppState<R, RT>>,
+pub async fn mobile_logout(
+    State(state): State<AppState>,
     Json(body): Json<LogoutRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-{
+) -> Result<impl IntoResponse, AppError> {
     state
         .logout
         .execute(LogoutInput {
@@ -135,14 +121,10 @@ where
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub async fn mobile_refresh<R, RT>(
-    State(state): State<AppState<R, RT>>,
+pub async fn mobile_refresh(
+    State(state): State<AppState>,
     Json(body): Json<RefreshRequest>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone + Send + Sync + 'static,
-    RT: RefreshTokenRepository + Clone + Send + Sync + 'static,
-{
+) -> Result<impl IntoResponse, AppError> {
     let output = state
         .refresh_token
         .execute(RefreshTokenInput {
@@ -157,14 +139,10 @@ where
     }))
 }
 
-pub async fn web_refresh<R, RT>(
-    State(state): State<AppState<R, RT>>,
+pub async fn web_refresh(
+    State(state): State<AppState>,
     jar: CookieJar,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone,
-    RT: RefreshTokenRepository + Clone,
-{
+) -> Result<impl IntoResponse, AppError> {
     let refresh_token = jar
         .get("refresh_token")
         .map(|c| c.value().to_string())
@@ -192,14 +170,10 @@ where
     ))
 }
 
-pub async fn sign_up<R, RT>(
-    State(state): State<AppState<R, RT>>,
+pub async fn sign_up(
+    State(state): State<AppState>,
     body: Result<Json<SignUpRequest>, axum::extract::rejection::JsonRejection>,
-) -> Result<impl IntoResponse, AppError>
-where
-    R: UserRepository + Clone,
-    RT: RefreshTokenRepository + Clone,
-{
+) -> Result<impl IntoResponse, AppError> {
     let Json(body) = body.map_err(|e| DomainError::InvalidRequest(e.to_string()))?;
     let output = state
         .sign_up

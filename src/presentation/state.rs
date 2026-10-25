@@ -1,6 +1,3 @@
-use crate::domain::refresh_token::repository::RefreshTokenRepository;
-use crate::domain::subscription::repository::SubscriptionRepository;
-use crate::domain::user::repository::UserRepository;
 use crate::infra::oauth::google::GoogleOAuthClient;
 use crate::usecase::auth::login_with_email::LoginWithEmailUsecase;
 use crate::usecase::auth::logout::LogoutUsecase;
@@ -17,23 +14,18 @@ use crate::usecase::user::update_plan::UpdatePlanUsecase;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct AppState<R, RT, S>
-where
-    R: UserRepository + Clone,
-    RT: RefreshTokenRepository + Clone,
-    S: SubscriptionRepository + Clone,
-{
-    pub sign_up: Arc<SignUpWithEmailUsecase<R, RT>>,
-    pub login: Arc<LoginWithEmailUsecase<R, RT>>,
-    pub logout: Arc<LogoutUsecase<RT>>,
-    pub refresh_token: Arc<RefreshTokenUsecase<R, RT>>,
-    pub update_password: Arc<UpdatePasswordUsecase<R>>,
-    pub update_name: Arc<UpdateNameUsecase<R>>,
-    pub update_plan: Arc<UpdatePlanUsecase<R>>,
-    pub get_me: Arc<GetMeUsecase<R>>,
-    pub sign_up_with_oauth: Arc<SignUpWithOAuthUsecase<R, RT>>,
-    pub sign_up_with_mobile_device: Arc<SignUpWithMobileDeviceUsecase<R, RT>>,
+pub struct AppState {
+    pub sign_up: Arc<dyn SignUpWithEmailUsecase>,
+    pub login: Arc<dyn LoginWithEmailUsecase>,
+    pub logout: Arc<dyn LogoutUsecase>,
+    pub refresh_token: Arc<dyn RefreshTokenUsecase>,
+    pub update_password: Arc<dyn UpdatePasswordUsecase>,
+    pub update_name: Arc<dyn UpdateNameUsecase>,
+    pub update_plan: Arc<dyn UpdatePlanUsecase>,
+    pub get_me: Arc<dyn GetMeUsecase>,
+    pub sign_up_with_oauth: Arc<dyn SignUpWithOAuthUsecase>,
+    pub sign_up_with_mobile_device: Arc<dyn SignUpWithMobileDeviceUsecase>,
     pub google_oauth_client: Arc<GoogleOAuthClient>,
-    pub verify_subscription: Arc<VerifySubscriptionUsecase<R, S>>,
-    pub handle_webhook: Arc<HandleWebhookUsecase<R, S>>,
+    pub verify_subscription: Arc<dyn VerifySubscriptionUsecase>,
+    pub handle_webhook: Arc<dyn HandleWebhookUsecase>,
 }
