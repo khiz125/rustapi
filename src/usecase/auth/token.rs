@@ -1,7 +1,7 @@
-use crate::domain::error::DomainError;
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::refresh_token::vo::TokenHash;
 use crate::domain::user::vo::UserId;
+use crate::usecase::error::UsecaseError;
 
 use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
@@ -15,10 +15,10 @@ pub struct Claims {
     pub plan: String,
 }
 
-pub fn issue_token(user_id: i64, secret: &str, plan: &str) -> Result<String, DomainError> {
+pub fn issue_token(user_id: i64, secret: &str, plan: &str) -> Result<String, UsecaseError> {
     let exp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?
+        .map_err(|e| UsecaseError::Token(e.to_string()))?
         .as_secs()
         + 60 * 15;
 
@@ -33,7 +33,7 @@ pub fn issue_token(user_id: i64, secret: &str, plan: &str) -> Result<String, Dom
         &claims,
         &EncodingKey::from_secret(secret.as_bytes()),
     )
-    .map_err(|e| DomainError::Unexpected(e.to_string()))
+    .map_err(|e| UsecaseError::Token(e.to_string()))
 }
 
 pub async fn issue_tokens<RT: RefreshTokenRepository>(
@@ -41,7 +41,7 @@ pub async fn issue_tokens<RT: RefreshTokenRepository>(
     plan: &str,
     jwt_secret: &str,
     refresh_token_repository: &RT,
-) -> Result<(String, String), crate::domain::error::DomainError> {
+) -> Result<(String, String), UsecaseError> {
     let access_token = issue_token(user_id.value(), jwt_secret, plan)?;
     let refresh_token = generate_refresh_token();
     let token_hash = hash_refresh_token(&refresh_token);
@@ -49,7 +49,8 @@ pub async fn issue_tokens<RT: RefreshTokenRepository>(
 
     refresh_token_repository
         .create(user_id, token_hash, expires_at)
-        .await?;
+        .await
+        .map_err(UsecaseError::Repository)?;
 
     Ok((access_token, refresh_token))
 }

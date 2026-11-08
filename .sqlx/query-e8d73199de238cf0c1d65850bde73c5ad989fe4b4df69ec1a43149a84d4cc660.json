@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE user_auth\n                    SET password_hash = $1,\n                    updated_at = $2\n                    WHERE user_id = $3\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e8d73199de238cf0c1d65850bde73c5ad989fe4b4df69ec1a43149a84d4cc660"
+}

@@ -1,4 +1,4 @@
-use crate::domain::error::DomainError;
+use crate::domain::repo_error::RepositoryError;
 use crate::domain::subscription::Subscription;
 use crate::domain::subscription::repository::SubscriptionRepository;
 use crate::domain::subscription::vo::{
@@ -33,13 +33,16 @@ struct SubscriptionRow {
     updated_at: DateTime<Utc>,
 }
 
-fn to_domain(row: &SubscriptionRow) -> Result<Subscription, DomainError> {
-    let provider = SubscriptionProvider::from_str(&row.provider)
-        .ok_or_else(|| DomainError::Unexpected(format!("unknow provider: {}", row.provider)))?;
-    let status = SubscriptionStatus::from_str(&row.status)
-        .ok_or_else(|| DomainError::Unexpected(format!("unknown status: {}", row.status)))?;
-    let plan = UserPlan::from_str(&row.plan)
-        .ok_or_else(|| DomainError::Unexpected(format!("unknown plan: {}", row.plan)))?;
+fn to_domain(row: &SubscriptionRow) -> Result<Subscription, RepositoryError> {
+    let provider = SubscriptionProvider::from_str(&row.provider).ok_or_else(|| {
+        RepositoryError::DataIntegrityError(format!("unknow provider: {}", row.provider))
+    })?;
+    let status = SubscriptionStatus::from_str(&row.status).ok_or_else(|| {
+        RepositoryError::DataIntegrityError(format!("unknown status: {}", row.status))
+    })?;
+    let plan = UserPlan::from_str(&row.plan).ok_or_else(|| {
+        RepositoryError::DataIntegrityError(format!("unknown plan: {}", row.plan))
+    })?;
 
     Ok(Subscription {
         id: SubscriptionId::new(row.id),
@@ -61,7 +64,7 @@ impl SubscriptionRepository for PgSubscriptionRepository {
         &self,
         provider: &SubscriptionProvider,
         provider_subscription_id: &ProviderSubscriptionId,
-    ) -> Result<Option<Subscription>, DomainError> {
+    ) -> Result<Option<Subscription>, RepositoryError> {
         let row = sqlx::query!(
             r#"
             SELECT
@@ -83,8 +86,7 @@ impl SubscriptionRepository for PgSubscriptionRepository {
             provider_subscription_id.value()
         )
         .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         let Some(row) = row else {
             return Ok(None);
@@ -108,7 +110,7 @@ impl SubscriptionRepository for PgSubscriptionRepository {
     async fn find_active_by_user_id(
         &self,
         user_id: UserId,
-    ) -> Result<Option<Subscription>, DomainError> {
+    ) -> Result<Option<Subscription>, RepositoryError> {
         let row = sqlx::query!(
             r#"
             SELECT
@@ -132,8 +134,7 @@ impl SubscriptionRepository for PgSubscriptionRepository {
             user_id.value()
         )
         .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         let Some(row) = row else { return Ok(None) };
 
@@ -159,7 +160,7 @@ impl SubscriptionRepository for PgSubscriptionRepository {
         provider_subscription_id: ProviderSubscriptionId,
         plan: UserPlan,
         expires_at: DateTime<Utc>,
-    ) -> Result<Subscription, DomainError> {
+    ) -> Result<Subscription, RepositoryError> {
         let row = sqlx::query!(
             r#"
             INSERT INTO subscriptions (
@@ -195,8 +196,7 @@ impl SubscriptionRepository for PgSubscriptionRepository {
             expires_at
         )
         .fetch_one(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         to_domain(&SubscriptionRow {
             id: row.id,
@@ -218,7 +218,7 @@ impl SubscriptionRepository for PgSubscriptionRepository {
         provider_subscription_id: &ProviderSubscriptionId,
         status: SubscriptionStatus,
         expires_at: Option<DateTime<Utc>>,
-    ) -> Result<(), DomainError> {
+    ) -> Result<(), RepositoryError> {
         sqlx::query!(
             r#"
             UPDATE subscriptions
@@ -234,8 +234,7 @@ impl SubscriptionRepository for PgSubscriptionRepository {
             provider_subscription_id.value()
         )
         .execute(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         Ok(())
     }

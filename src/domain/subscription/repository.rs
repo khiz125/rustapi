@@ -1,4 +1,4 @@
-use crate::domain::error::DomainError;
+use crate::domain::repo_error::RepositoryError;
 use crate::domain::subscription::Subscription;
 use crate::domain::subscription::vo::{
     ProviderSubscriptionId, SubscriptionProvider, SubscriptionStatus,
@@ -16,12 +16,12 @@ pub trait SubscriptionRepository: Send + Sync {
         &self,
         provder: &SubscriptionProvider,
         provider_subscription_id: &ProviderSubscriptionId,
-    ) -> Result<Option<Subscription>, DomainError>;
+    ) -> Result<Option<Subscription>, RepositoryError>;
 
     async fn find_active_by_user_id(
         &self,
         user_id: UserId,
-    ) -> Result<Option<Subscription>, DomainError>;
+    ) -> Result<Option<Subscription>, RepositoryError>;
 
     async fn create(
         &self,
@@ -30,7 +30,7 @@ pub trait SubscriptionRepository: Send + Sync {
         provider_subscription_id: ProviderSubscriptionId,
         plan: UserPlan,
         expires_at: DateTime<Utc>,
-    ) -> Result<Subscription, DomainError>;
+    ) -> Result<Subscription, RepositoryError>;
 
     async fn update_status(
         &self,
@@ -38,5 +38,5 @@ pub trait SubscriptionRepository: Send + Sync {
         provider_subscription_id: &ProviderSubscriptionId,
         status: SubscriptionStatus,
         expires_at: Option<DateTime<Utc>>,
-    ) -> Result<(), DomainError>;
+    ) -> Result<(), RepositoryError>;
 }

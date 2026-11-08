@@ -1,9 +1,9 @@
-use crate::domain::error::DomainError;
 use crate::domain::subscription::repository::SubscriptionRepository;
 use crate::domain::subscription::vo::{
     ProviderSubscriptionId, SubscriptionProvider, SubscriptionStatus,
 };
 use crate::domain::user::repository::UserRepository;
+use crate::usecase::error::UsecaseError;
 use crate::usecase::subscription::webhook_subscription::{
     handle_subscription_expired, handle_subscription_renewed,
 };
@@ -26,7 +26,7 @@ pub struct HandleWebhookInput {
 
 #[async_trait::async_trait]
 pub trait HandleWebhookUsecase: Send + Sync {
-    async fn execute(&self, input: HandleWebhookInput) -> Result<(), DomainError>;
+    async fn execute(&self, input: HandleWebhookInput) -> Result<(), UsecaseError>;
 }
 
 pub struct HandleWebhookUsecaseImpl<R: UserRepository, S: SubscriptionRepository> {
@@ -49,7 +49,7 @@ where
     R: UserRepository + Send + Sync,
     S: SubscriptionRepository + Send + Sync,
 {
-    async fn execute(&self, input: HandleWebhookInput) -> Result<(), DomainError> {
+    async fn execute(&self, input: HandleWebhookInput) -> Result<(), UsecaseError> {
         let provider_subscription_id = ProviderSubscriptionId::new(input.provider_subscription_id);
 
         match input.event {

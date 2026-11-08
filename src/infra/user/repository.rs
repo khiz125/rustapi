@@ -1,5 +1,5 @@
 use super::user_row::{AuthRow, UserRow};
-use crate::domain::error::DomainError;
+use crate::domain::repo_error::RepositoryError;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::user_auth::{AuthMethod, UserAuth};
 use crate::domain::user::vo::{UserName, UserPlan};
@@ -8,7 +8,6 @@ use crate::domain::user::vo::{
     provider_user_id::ProviderUserId, user_id::UserId,
 };
 use crate::domain::user::{NewUser, User};
-use crate::infra::user::user_row;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -27,7 +26,7 @@ impl PgUserRepository {
 
 #[async_trait]
 impl UserRepository for PgUserRepository {
-    async fn find_by_id(&self, id: UserId) -> Result<Option<User>, DomainError> {
+    async fn find_by_id(&self, id: UserId) -> Result<Option<User>, RepositoryError> {
         let row = sqlx::query!(
             r#"
               SELECT
@@ -51,8 +50,7 @@ impl UserRepository for PgUserRepository {
             id.value()
         )
         .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         let Some(row) = row else {
             return Ok(None);
@@ -77,11 +75,12 @@ impl UserRepository for PgUserRepository {
         };
         Ok(Some(user_row.into_domain()?))
     }
+
     async fn find_by_provider(
         &self,
         provider: &OAuthProvider,
         provider_user_id: &ProviderUserId,
-    ) -> Result<Option<User>, DomainError> {
+    ) -> Result<Option<User>, RepositoryError> {
         let row = sqlx::query!(
             r#"
         SELECT
@@ -107,8 +106,7 @@ impl UserRepository for PgUserRepository {
             provider_user_id.value(),
         )
         .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         let Some(row) = row else {
             return Ok(None);
@@ -134,7 +132,8 @@ impl UserRepository for PgUserRepository {
 
         Ok(Some(user_row.into_domain()?))
     }
-    async fn find_by_email(&self, email: &Email) -> Result<Option<User>, DomainError> {
+
+    async fn find_by_email(&self, email: &Email) -> Result<Option<User>, RepositoryError> {
         let row = sqlx::query!(
             r#"
         SELECT
@@ -158,8 +157,7 @@ impl UserRepository for PgUserRepository {
             email.value(),
         )
         .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         let Some(row) = row else {
             return Ok(None);
@@ -185,7 +183,11 @@ impl UserRepository for PgUserRepository {
 
         Ok(Some(user_row.into_domain()?))
     }
-    async fn find_by_device_id(&self, device_id: &DeviceId) -> Result<Option<User>, DomainError> {
+
+    async fn find_by_device_id(
+        &self,
+        device_id: &DeviceId,
+    ) -> Result<Option<User>, RepositoryError> {
         let row = sqlx::query!(
             r#"
             SELECT
@@ -210,8 +212,7 @@ impl UserRepository for PgUserRepository {
             device_id.value()
         )
         .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         let Some(row) = row else {
             return Ok(None);
@@ -237,12 +238,9 @@ impl UserRepository for PgUserRepository {
 
         Ok(Some(user_row.into_domain()?))
     }
-    async fn create(&self, new_user: NewUser) -> Result<User, DomainError> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+
+    async fn create(&self, new_user: NewUser) -> Result<User, RepositoryError> {
+        let mut tx = self.pool.begin().await?;
 
         let user_row = sqlx::query!(
             r#"
@@ -258,8 +256,7 @@ impl UserRepository for PgUserRepository {
             new_user.name.value()
         )
         .fetch_one(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         let auth_row: AuthRow = match &new_user.auth.method {
             AuthMethod::Password {
@@ -285,16 +282,15 @@ impl UserRepository for PgUserRepository {
                     password_hash.value()
                 )
                 .fetch_one(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+                .await?;
 
                 AuthRow::Password {
-                    email: row
-                        .email
-                        .ok_or_else(|| DomainError::Unexpected("email is null".into()))?,
-                    password_hash: row
-                        .password_hash
-                        .ok_or_else(|| DomainError::Unexpected("password_hash is null".into()))?,
+                    email: row.email.ok_or_else(|| {
+                        RepositoryError::DataIntegrityError("email is null".into())
+                    })?,
+                    password_hash: row.password_hash.ok_or_else(|| {
+                        RepositoryError::DataIntegrityError("password_hash is null".into())
+                    })?,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 }
@@ -325,18 +321,18 @@ impl UserRepository for PgUserRepository {
                     provider_user_id.value()
                 )
                 .fetch_one(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+                .await?;
 
                 AuthRow::OAuth {
                     email: row.email,
-                    provider: OAuthProvider::from_str(
-                        &row.provider
-                            .ok_or_else(|| DomainError::Unexpected("provider is null".into()))?,
-                    )
-                    .ok_or_else(|| DomainError::Unexpected("invalid OAuth provider".into()))?,
+                    provider: OAuthProvider::from_str(&row.provider.ok_or_else(|| {
+                        RepositoryError::DataIntegrityError("provider is null".into())
+                    })?)
+                    .ok_or_else(|| {
+                        RepositoryError::DataIntegrityError("invalid OAuth provider".into())
+                    })?,
                     provider_user_id: row.provider_user_id.ok_or_else(|| {
-                        DomainError::Unexpected("provider_user_id is null".into())
+                        RepositoryError::DataIntegrityError("provider_user_id is null".into())
                     })?,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
@@ -361,22 +357,19 @@ impl UserRepository for PgUserRepository {
                     device_id.value()
                 )
                 .fetch_one(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+                .await?;
 
                 AuthRow::MobileDevice {
-                    device_id: row
-                        .provider_user_id
-                        .ok_or_else(|| DomainError::Unexpected("device_id is null".into()))?,
+                    device_id: row.provider_user_id.ok_or_else(|| {
+                        RepositoryError::DataIntegrityError("device_id is null".into())
+                    })?,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 }
             }
         };
 
-        tx.commit()
-            .await
-            .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        tx.commit().await?;
 
         let user_row_dto = UserRow {
             id: user_row.id,
@@ -391,31 +384,30 @@ impl UserRepository for PgUserRepository {
         user_row_dto.into_domain()
     }
 
-    async fn save_auth(&self, user_auth: &UserAuth) -> Result<(), DomainError> {
+    async fn save_auth(&self, user_auth: &UserAuth) -> Result<(), RepositoryError> {
         match &user_auth.auth_method {
             AuthMethod::Password { password_hash, .. } => {
                 sqlx::query!(
                     r#"
-                UPDATE user_auth
-                SET password_hash = $1,
+                    UPDATE user_auth
+                    SET password_hash = $1,
                     updated_at = $2
-                WHERE user_id = $3
-                "#,
+                    WHERE user_id = $3
+                    "#,
                     password_hash.value(),
                     user_auth.updated_at,
                     user_auth.user_id.value()
                 )
                 .execute(&self.pool)
-                .await
-                .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+                .await?;
             }
             AuthMethod::OAuth { .. } => {
-                return Err(DomainError::Unexpected(
+                return Err(RepositoryError::DataIntegrityError(
                     "cannot save OAuth auth medthod".into(),
                 ));
             }
             AuthMethod::MobileDevice { .. } => {
-                return Err(DomainError::Unexpected(
+                return Err(RepositoryError::DataIntegrityError(
                     "cannot save MobileDevice auth method".into(),
                 ));
             }
@@ -423,7 +415,11 @@ impl UserRepository for PgUserRepository {
         Ok(())
     }
 
-    async fn update_name(&self, user_id: UserId, new_name: UserName) -> Result<(), DomainError> {
+    async fn update_name(
+        &self,
+        user_id: UserId,
+        new_name: UserName,
+    ) -> Result<(), RepositoryError> {
         sqlx::query!(
             r#"
             UPDATE users
@@ -435,8 +431,7 @@ impl UserRepository for PgUserRepository {
             user_id.value()
         )
         .execute(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         Ok(())
     }
@@ -446,7 +441,7 @@ impl UserRepository for PgUserRepository {
         user_id: UserId,
         plan: UserPlan,
         plan_expires_at: Option<DateTime<Utc>>,
-    ) -> Result<(), DomainError> {
+    ) -> Result<(), RepositoryError> {
         sqlx::query!(
             r#"
             UPDATE users
@@ -460,8 +455,7 @@ impl UserRepository for PgUserRepository {
             user_id.value()
         )
         .execute(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         Ok(())
     }

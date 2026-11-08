@@ -1,7 +1,7 @@
 use crate::domain::error::DomainError;
 use crate::presentation::error::AppError;
 use crate::usecase::auth::token::Claims;
-
+use crate::usecase::error::UsecaseError;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use jsonwebtoken::{DecodingKey, Validation, decode};
@@ -20,21 +20,21 @@ where
             .headers
             .get("Authorization")
             .and_then(|v| v.to_str().ok())
-            .ok_or(DomainError::Unauthorized)?;
+            .ok_or(AppError::from(DomainError::Unauthorized))?;
 
         let token = auth_header
             .strip_prefix("Bearer ")
-            .ok_or(DomainError::Unauthorized)?;
+            .ok_or(AppError::from(DomainError::Unauthorized))?;
 
         let jwt_secret = env::var("JWT_SECRET")
-            .map_err(|_| DomainError::Unexpected("JWT_SECRET not set".into()))?;
+            .map_err(|_| AppError::from(UsecaseError::Token("JWT_SECRET not set".into())))?;
 
         let claims = decode::<Claims>(
             token,
             &DecodingKey::from_secret(jwt_secret.as_bytes()),
             &Validation::default(),
         )
-        .map_err(|_| DomainError::Unauthorized)?
+        .map_err(|_| AppError::from(DomainError::Unauthorized))?
         .claims;
 
         Ok(AuthUser(claims))

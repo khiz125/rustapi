@@ -5,6 +5,9 @@ pub enum DomainError {
     #[error("invalid user name: {0}")]
     InvalidUserName(UserName),
 
+    #[error("invalid credentials")]
+    InvalidCredentials,
+
     #[error("invalid email: {0}")]
     InvalidEmail(String),
 
@@ -29,17 +32,26 @@ pub enum DomainError {
     #[error("email already exists")]
     EmailAlreadyExists,
 
-    // FIX ME
     #[error("subscription not found")]
     SubscriptionNotFound,
+
     #[error("subscription already exists")]
     SubscriptionAlreadyExists,
+
     #[error("invalid subscription: {0}")]
     InvalidSubscription(String),
+
     #[error("plan upgrade required")]
     PlanUpgradeRequired,
+
     #[error("webhook verification failed")]
     WebhookVerificationFailed,
-    #[error("provider api error: {0}")]
-    ProviderApiError(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum OAuthError {
+    #[error("oauth provider request failed: {0}")]
+    RequestFailed(String),
+    #[error("oauth provider returned invalid response: {0}")]
+    InvalidResponse(String),
 }

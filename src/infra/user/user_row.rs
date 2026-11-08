@@ -1,4 +1,4 @@
-use crate::domain::error::DomainError;
+use crate::domain::repo_error::RepositoryError;
 use crate::domain::types::UtcDateTime;
 
 use crate::domain::user::User;
@@ -50,11 +50,13 @@ pub(super) struct UserRow {
 
 #[allow(dead_code)]
 impl UserRow {
-    pub fn into_domain(self) -> Result<User, DomainError> {
+    pub fn into_domain(self) -> Result<User, RepositoryError> {
         let user_id = UserId::new(self.id);
-        let name = UserName::new(self.name).map_err(|e| DomainError::Unexpected(e.to_string()))?;
-        let plan = UserPlan::from_str(&self.plan)
-            .ok_or_else(|| DomainError::Unexpected(format!("unknow plan: {}", self.plan)))?;
+        let name = UserName::new(self.name)
+            .map_err(|e| RepositoryError::DataIntegrityError(e.to_string()))?;
+        let plan = UserPlan::from_str(&self.plan).ok_or_else(|| {
+            RepositoryError::DataIntegrityError(format!("unknow plan: {}", self.plan))
+        })?;
 
         let (auth_method, auth_created_at, auth_updated_at) = match self.kind {
             AuthRow::Password {
@@ -63,8 +65,8 @@ impl UserRow {
                 created_at,
                 updated_at,
             } => {
-                let email =
-                    Email::new(email).map_err(|e| DomainError::Unexpected(e.to_string()))?;
+                let email = Email::new(email)
+                    .map_err(|e| RepositoryError::DataIntegrityError(e.to_string()))?;
                 let password_hash = PasswordHash::new(password_hash);
                 (
                     AuthMethod::Password {
@@ -86,7 +88,7 @@ impl UserRow {
                 let email = email
                     .map(Email::new)
                     .transpose()
-                    .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+                    .map_err(|e| RepositoryError::DataIntegrityError(e.to_string()))?;
                 (
                     AuthMethod::OAuth {
                         email,
@@ -137,33 +139,39 @@ impl AuthRow {
         provider_user_id: Option<String>,
         created_at: UtcDateTime,
         updated_at: UtcDateTime,
-    ) -> Result<Self, DomainError> {
+    ) -> Result<Self, RepositoryError> {
         match kind {
             "password_hash" => Ok(AuthRow::Password {
-                email: email.ok_or_else(|| DomainError::Unexpected("email is null".into()))?,
-                password_hash: password_hash
-                    .ok_or_else(|| DomainError::Unexpected("password_hash is null".into()))?,
+                email: email
+                    .ok_or_else(|| RepositoryError::DataIntegrityError("email is null".into()))?,
+                password_hash: password_hash.ok_or_else(|| {
+                    RepositoryError::DataIntegrityError("password_hash is null".into())
+                })?,
                 created_at,
                 updated_at,
             }),
             "oauth" => Ok(AuthRow::OAuth {
                 email,
-                provider: OAuthProvider::from_str(
-                    &provider.ok_or_else(|| DomainError::Unexpected("provider is null".into()))?,
-                )
-                .ok_or_else(|| DomainError::Unexpected("invalid OAuth provider".into()))?,
-                provider_user_id: provider_user_id
-                    .ok_or_else(|| DomainError::Unexpected("provider_user_id is null".into()))?,
+                provider: OAuthProvider::from_str(&provider.ok_or_else(|| {
+                    RepositoryError::DataIntegrityError("provider is null".into())
+                })?)
+                .ok_or_else(|| {
+                    RepositoryError::DataIntegrityError("invalid OAuth provider".into())
+                })?,
+                provider_user_id: provider_user_id.ok_or_else(|| {
+                    RepositoryError::DataIntegrityError("provider_user_id is null".into())
+                })?,
                 created_at,
                 updated_at,
             }),
             "mobile_device" => Ok(AuthRow::MobileDevice {
-                device_id: provider_user_id
-                    .ok_or_else(|| DomainError::Unexpected("device_id is null".into()))?,
+                device_id: provider_user_id.ok_or_else(|| {
+                    RepositoryError::DataIntegrityError("device_id is null".into())
+                })?,
                 created_at,
                 updated_at,
             }),
-            other => Err(DomainError::Unexpected(format!(
+            other => Err(RepositoryError::DataIntegrityError(format!(
                 "unknown auth kind: {}",
                 other
             ))),

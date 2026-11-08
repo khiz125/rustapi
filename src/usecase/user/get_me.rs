@@ -1,7 +1,7 @@
-use crate::domain::error::DomainError;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::user_auth::AuthMethod;
 use crate::domain::user::vo::UserId;
+use crate::{domain::error::DomainError, usecase::error::UsecaseError};
 use chrono::{DateTime, Utc};
 use std::sync::Arc;
 
@@ -21,7 +21,7 @@ pub struct GetMeOutput {
 
 #[async_trait::async_trait]
 pub trait GetMeUsecase: Send + Sync {
-    async fn execute(&self, input: GetMeInput) -> Result<GetMeOutput, DomainError>;
+    async fn execute(&self, input: GetMeInput) -> Result<GetMeOutput, UsecaseError>;
 }
 
 pub struct GetMeUsecaseImpl<R: UserRepository> {
@@ -39,12 +39,13 @@ impl<R> GetMeUsecase for GetMeUsecaseImpl<R>
 where
     R: UserRepository + Send + Sync,
 {
-    async fn execute(&self, input: GetMeInput) -> Result<GetMeOutput, DomainError> {
+    async fn execute(&self, input: GetMeInput) -> Result<GetMeOutput, UsecaseError> {
         let user = self
             .user_repository
             .find_by_id(UserId::new(input.user_id))
-            .await?
-            .ok_or(DomainError::UserNotFound)?;
+            .await
+            .map_err(UsecaseError::Repository)?
+            .ok_or(UsecaseError::Domain(DomainError::UserNotFound))?;
 
         let email = user.auth.email().map(|e| e.value().to_string());
 

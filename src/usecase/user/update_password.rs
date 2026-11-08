@@ -3,6 +3,7 @@ use crate::domain::user::repository::UserRepository;
 use crate::domain::user::user_auth::AuthMethod;
 use crate::domain::user::vo::UserId;
 use crate::usecase::auth::password_crypto::{hash_password, verify_password};
+use crate::usecase::error::UsecaseError;
 use std::sync::Arc;
 
 pub struct UpdatePasswordInput {
@@ -13,7 +14,7 @@ pub struct UpdatePasswordInput {
 
 #[async_trait::async_trait]
 pub trait UpdatePasswordUsecase: Send + Sync {
-    async fn execute(&self, input: UpdatePasswordInput) -> Result<(), DomainError>;
+    async fn execute(&self, input: UpdatePasswordInput) -> Result<(), UsecaseError>;
 }
 
 pub struct UpdatePasswordUsecaseImpl<R: UserRepository> {
@@ -31,28 +32,35 @@ impl<R> UpdatePasswordUsecase for UpdatePasswordUsecaseImpl<R>
 where
     R: UserRepository + Send + Sync,
 {
-    async fn execute(&self, input: UpdatePasswordInput) -> Result<(), DomainError> {
+    async fn execute(&self, input: UpdatePasswordInput) -> Result<(), UsecaseError> {
         let user_id = UserId::new(input.user_id);
 
         let mut user = self
             .user_repository
             .find_by_id(user_id)
-            .await?
-            .ok_or(DomainError::UserNotFound)?;
+            .await
+            .map_err(UsecaseError::Repository)?
+            .ok_or(UsecaseError::Domain(DomainError::UserNotFound))?;
 
         let current_hash = match &user.auth.auth_method {
             AuthMethod::Password { password_hash, .. } => password_hash.value().to_string(),
-            AuthMethod::OAuth { .. } => return Err(DomainError::NotPasswordAuthUser),
-            AuthMethod::MobileDevice { .. } => return Err(DomainError::NotPasswordAuthUser),
+            AuthMethod::OAuth { .. } | AuthMethod::MobileDevice { .. } => {
+                return Err(UsecaseError::Domain(DomainError::NotPasswordAuthUser));
+            }
         };
 
         verify_password(&input.current_password, &current_hash)?;
 
         let new_hash = hash_password(&input.new_password)?;
 
-        user.auth.change_password(new_hash)?;
+        user.auth
+            .change_password(new_hash)
+            .map_err(UsecaseError::Domain);
 
-        self.user_repository.save_auth(&user.auth).await?;
+        self.user_repository
+            .save_auth(&user.auth)
+            .await
+            .map_err(UsecaseError::Repository)?;
 
         Ok(())
     }
@@ -131,7 +139,10 @@ mod tests {
             })
             .await;
 
-        assert!(matches!(result, Err(DomainError::IncorrectPassword)));
+        assert!(matches!(
+            result,
+            Err(UsecaseError::Domain(DomainError::IncorrectPassword))
+        ));
     }
 
     #[tokio::test]
@@ -148,6 +159,9 @@ mod tests {
             })
             .await;
 
-        assert!(matches!(result, Err(DomainError::NotPasswordAuthUser)));
+        assert!(matches!(
+            result,
+            Err(UsecaseError::Domain(DomainError::NotPasswordAuthUser))
+        ));
     }
 }

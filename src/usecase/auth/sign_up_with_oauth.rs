@@ -4,6 +4,7 @@ use crate::domain::user::NewUser;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::{Email, OAuthProvider, ProviderUserId, UserName};
 use crate::usecase::auth::token::issue_tokens;
+use crate::usecase::error::UsecaseError;
 
 use std::sync::Arc;
 
@@ -26,7 +27,7 @@ pub trait SignUpWithOAuthUsecase: Send + Sync {
     async fn execute(
         &self,
         input: SignUpWithOAuthInput,
-    ) -> Result<SignUpWithOAuthOutput, DomainError>;
+    ) -> Result<SignUpWithOAuthOutput, UsecaseError>;
 }
 
 pub struct SignUpWithOAuthUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
@@ -58,18 +59,19 @@ where
     async fn execute(
         &self,
         input: SignUpWithOAuthInput,
-    ) -> Result<SignUpWithOAuthOutput, DomainError> {
+    ) -> Result<SignUpWithOAuthOutput, UsecaseError> {
         let provider_user_id = ProviderUserId::new(input.provider_user_id);
 
         if let Some(existing) = self
             .user_repository
             .find_by_provider(&input.provider, &provider_user_id)
-            .await?
+            .await
+            .map_err(UsecaseError::Repository)?
         {
             let (access_token, refresh_token) = issue_tokens(
                 existing.id,
-                &self.jwt_secret,
                 existing.plan.as_str(),
+                &self.jwt_secret,
                 &*self.refresh_token_repository,
             )
             .await?;
@@ -82,10 +84,18 @@ where
             });
         }
 
-        let name = UserName::new(input.name)?;
-        let email = input.email.map(Email::new).transpose()?;
+        let name = UserName::new(input.name).map_err(UsecaseError::Domain)?;
+        let email = input
+            .email
+            .map(Email::new)
+            .transpose()
+            .map_err(UsecaseError::Domain)?;
         let new_user = NewUser::new_oauth(name, email, input.provider, provider_user_id);
-        let created = self.user_repository.create(new_user).await?;
+        let created = self
+            .user_repository
+            .create(new_user)
+            .await
+            .map_err(UsecaseError::Repository)?;
 
         let (access_token, refresh_token) = issue_tokens(
             created.id,
@@ -232,6 +242,9 @@ mod tests {
             })
             .await;
 
-        assert!(matches!(result, Err(DomainError::InvalidUserName(_))));
+        assert!(matches!(
+            result,
+            Err(UsecaseError::Domain(DomainError::InvalidUserName(_)))
+        ));
     }
 }

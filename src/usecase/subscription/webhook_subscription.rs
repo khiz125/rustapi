@@ -5,6 +5,7 @@ use crate::domain::subscription::vo::{
 };
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::UserPlan;
+use crate::usecase::error::UsecaseError;
 use chrono::{DateTime, Utc};
 
 pub async fn handle_subscription_renewed<R: UserRepository, S: SubscriptionRepository>(
@@ -13,11 +14,12 @@ pub async fn handle_subscription_renewed<R: UserRepository, S: SubscriptionRepos
     provider: &SubscriptionProvider,
     provider_subscription_id: &ProviderSubscriptionId,
     new_expires_at: DateTime<Utc>,
-) -> Result<(), DomainError> {
+) -> Result<(), UsecaseError> {
     let subscription = subscription_repository
         .find_by_provider_subscription_id(provider, provider_subscription_id)
-        .await?
-        .ok_or(DomainError::SubscriptionNotFound)?;
+        .await
+        .map_err(UsecaseError::Repository)?
+        .ok_or(UsecaseError::Domain(DomainError::SubscriptionNotFound))?;
 
     subscription_repository
         .update_status(
@@ -26,7 +28,8 @@ pub async fn handle_subscription_renewed<R: UserRepository, S: SubscriptionRepos
             SubscriptionStatus::Active,
             Some(new_expires_at),
         )
-        .await?;
+        .await
+        .map_err(UsecaseError::Repository)?;
 
     user_repository
         .update_plan(
@@ -34,7 +37,8 @@ pub async fn handle_subscription_renewed<R: UserRepository, S: SubscriptionRepos
             UserPlan::Premium,
             Some(new_expires_at),
         )
-        .await?;
+        .await
+        .map_err(UsecaseError::Repository)?;
 
     Ok(())
 }
@@ -45,19 +49,22 @@ pub async fn handle_subscription_expired<R: UserRepository, S: SubscriptionRepos
     provider: &SubscriptionProvider,
     provider_subscription_id: &ProviderSubscriptionId,
     status: SubscriptionStatus,
-) -> Result<(), DomainError> {
+) -> Result<(), UsecaseError> {
     let subscription = subscription_repository
         .find_by_provider_subscription_id(provider, provider_subscription_id)
-        .await?
-        .ok_or(DomainError::SubscriptionNotFound)?;
+        .await
+        .map_err(UsecaseError::Repository)?
+        .ok_or(UsecaseError::Domain(DomainError::SubscriptionNotFound))?;
 
     subscription_repository
         .update_status(provider, provider_subscription_id, status, None)
-        .await?;
+        .await
+        .map_err(UsecaseError::Repository)?;
 
     user_repository
         .update_plan(subscription.user_id, UserPlan::Free, None)
-        .await?;
+        .await
+        .map_err(UsecaseError::Repository)?;
 
     Ok(())
 }

@@ -3,6 +3,7 @@ use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::UserPlan;
 use crate::usecase::auth::token::{generate_refresh_token, hash_refresh_token, issue_token};
+use crate::usecase::error::UsecaseError;
 use chrono::Utc;
 use std::sync::Arc;
 
@@ -18,7 +19,7 @@ pub struct RefreshTokenOutput {
 
 #[async_trait::async_trait]
 pub trait RefreshTokenUsecase: Send + Sync {
-    async fn execute(&self, input: RefreshTokenInput) -> Result<RefreshTokenOutput, DomainError>;
+    async fn execute(&self, input: RefreshTokenInput) -> Result<RefreshTokenOutput, UsecaseError>;
 }
 
 pub struct RefreshTokenUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
@@ -47,35 +48,39 @@ where
     R: UserRepository + Send + Sync,
     RT: RefreshTokenRepository + Send + Sync,
 {
-    async fn execute(&self, input: RefreshTokenInput) -> Result<RefreshTokenOutput, DomainError> {
+    async fn execute(&self, input: RefreshTokenInput) -> Result<RefreshTokenOutput, UsecaseError> {
         let token_hash = hash_refresh_token(&input.refresh_token);
         let stored_token = self
             .refresh_token_repository
             .find_by_hash(&token_hash)
-            .await?
-            .ok_or(DomainError::Unauthorized)?;
+            .await
+            .map_err(UsecaseError::Repository)?
+            .ok_or(UsecaseError::Domain(DomainError::Unauthorized))?;
 
         if !stored_token.is_valid() {
-            return Err(DomainError::Unauthorized);
+            return Err(UsecaseError::Domain(DomainError::Unauthorized));
         }
 
         let mut user = self
             .user_repository
             .find_by_id(stored_token.user_id)
-            .await?
-            .ok_or(DomainError::UserNotFound)?;
+            .await
+            .map_err(UsecaseError::Repository)?
+            .ok_or(UsecaseError::Domain(DomainError::UserNotFound))?;
 
         if user.plan.is_premium() && !user.is_premium() {
             self.user_repository
                 .update_plan(user.id, UserPlan::Free, None)
-                .await?;
+                .await
+                .map_err(UsecaseError::Repository)?;
             user.plan = UserPlan::Free;
             user.plan_expires_at = None
         }
 
         self.refresh_token_repository
             .revoke(stored_token.id)
-            .await?;
+            .await
+            .map_err(UsecaseError::Repository)?;
 
         let plan = user.plan.as_str();
         let access_token = issue_token(user.id.value(), &self.jwt_secret, plan)?;
@@ -85,7 +90,8 @@ where
 
         self.refresh_token_repository
             .create(user.id, new_token_hash, expires_at)
-            .await?;
+            .await
+            .map_err(UsecaseError::Repository)?;
 
         Ok(RefreshTokenOutput {
             user_id: user.id.value(),

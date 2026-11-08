@@ -3,6 +3,7 @@ use crate::domain::subscription::repository::SubscriptionRepository;
 use crate::domain::subscription::vo::{ProviderSubscriptionId, SubscriptionProvider};
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::{UserId, UserPlan};
+use crate::usecase::error::UsecaseError;
 
 use chrono::{DateTime, Utc};
 use std::sync::Arc;
@@ -24,7 +25,7 @@ pub trait VerifySubscriptionUsecase: Send + Sync {
     async fn execute(
         &self,
         input: VerifySubscriptionInput,
-    ) -> Result<VerifySubscriptionOutput, DomainError>;
+    ) -> Result<VerifySubscriptionOutput, UsecaseError>;
 }
 
 pub struct VerifySubscriptionUsecaseImpl<R: UserRepository, S: SubscriptionRepository> {
@@ -50,23 +51,25 @@ where
     async fn execute(
         &self,
         input: VerifySubscriptionInput,
-    ) -> Result<VerifySubscriptionOutput, DomainError> {
+    ) -> Result<VerifySubscriptionOutput, UsecaseError> {
         let user_id = UserId::new(input.user_id);
 
         self.user_repository
             .find_by_id(user_id)
-            .await?
-            .ok_or(DomainError::UserNotFound)?;
+            .await
+            .map_err(UsecaseError::Repository)?
+            .ok_or(UsecaseError::Domain(DomainError::UserNotFound))?;
 
         let provider_subscription_id = ProviderSubscriptionId::new(input.provider_subscription_id);
 
         if self
             .subscription_repository
             .find_by_provider_subscription_id(&input.provider, &provider_subscription_id)
-            .await?
+            .await
+            .map_err(UsecaseError::Repository)?
             .is_some()
         {
-            return Err(DomainError::SubscriptionAlreadyExists);
+            return Err(UsecaseError::Domain(DomainError::SubscriptionAlreadyExists));
         }
 
         let subscription = self
@@ -78,11 +81,13 @@ where
                 UserPlan::Premium,
                 input.expires_at,
             )
-            .await?;
+            .await
+            .map_err(UsecaseError::Repository)?;
 
         self.user_repository
             .update_plan(user_id, UserPlan::Premium, Some(input.expires_at))
-            .await?;
+            .await
+            .map_err(UsecaseError::Repository)?;
 
         Ok(VerifySubscriptionOutput {
             subscription_id: subscription.id.value(),

@@ -1,7 +1,7 @@
-use crate::domain::error::DomainError;
 use crate::domain::refresh_token::RefreshToken;
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::refresh_token::vo::{RefreshTokenId, TokenHash};
+use crate::domain::repo_error::RepositoryError;
 use crate::domain::user::vo::UserId;
 
 use async_trait::async_trait;
@@ -24,7 +24,7 @@ impl RefreshTokenRepository for PgRefreshTokenRepository {
     async fn find_by_hash(
         &self,
         token_hash: &TokenHash,
-    ) -> Result<Option<RefreshToken>, DomainError> {
+    ) -> Result<Option<RefreshToken>, RepositoryError> {
         let row = sqlx::query!(
             r#"
             SELECT id, user_id, token_hash, expires_at, created_at, revoked_at
@@ -34,8 +34,7 @@ impl RefreshTokenRepository for PgRefreshTokenRepository {
             token_hash.value()
         )
         .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         let Some(row) = row else {
             return Ok(None);
@@ -56,7 +55,7 @@ impl RefreshTokenRepository for PgRefreshTokenRepository {
         user_id: UserId,
         token_hash: TokenHash,
         expires_at: DateTime<Utc>,
-    ) -> Result<RefreshToken, DomainError> {
+    ) -> Result<RefreshToken, RepositoryError> {
         let row = sqlx::query!(
             r#"
             INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
@@ -68,8 +67,7 @@ impl RefreshTokenRepository for PgRefreshTokenRepository {
             expires_at
         )
         .fetch_one(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         Ok(RefreshToken {
             id: RefreshTokenId::new(row.id),
@@ -81,7 +79,7 @@ impl RefreshTokenRepository for PgRefreshTokenRepository {
         })
     }
 
-    async fn revoke(&self, id: RefreshTokenId) -> Result<(), DomainError> {
+    async fn revoke(&self, id: RefreshTokenId) -> Result<(), RepositoryError> {
         sqlx::query!(
             r#"
             UPDATE refresh_tokens
@@ -91,13 +89,12 @@ impl RefreshTokenRepository for PgRefreshTokenRepository {
             id.value()
         )
         .execute(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         Ok(())
     }
 
-    async fn revoke_all_for_user(&self, user_id: UserId) -> Result<(), DomainError> {
+    async fn revoke_all_for_user(&self, user_id: UserId) -> Result<(), RepositoryError> {
         sqlx::query!(
             r#"
             UPDATE refresh_tokens
@@ -108,8 +105,7 @@ impl RefreshTokenRepository for PgRefreshTokenRepository {
             user_id.value()
         )
         .execute(&self.pool)
-        .await
-        .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+        .await?;
 
         Ok(())
     }

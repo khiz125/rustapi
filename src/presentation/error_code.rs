@@ -23,6 +23,11 @@ pub const NOT_PASSWORD_AUTH_USER: ErrorCode = ErrorCode {
     message: "not a password auth user",
 };
 
+pub const INVALID_CREDENTIALS: ErrorCode = ErrorCode {
+    code: "INVALID_CREDENTIALS",
+    message: "invalid credentials",
+};
+
 pub const INVALID_EMAIL: ErrorCode = ErrorCode {
     code: "INVALID_EMAIL",
     message: "invalid email",
@@ -48,22 +53,31 @@ pub const INVALID_REQUEST: ErrorCode = ErrorCode {
     message: "invalid request",
 };
 
+pub const OAUTH_PROVIDER_ERROR: ErrorCode = ErrorCode {
+    code: "OAUTH_PROVIDER_ERROR",
+    message: "oauth provider error",
+};
+
 pub const SUBSCRIPTION_NOT_FOUND: ErrorCode = ErrorCode {
     code: "SUBSCRIPTION_NOT_FOUND",
     message: "subscription not found",
 };
+
 pub const SUBSCRIPTION_ALREADY_EXISTS: ErrorCode = ErrorCode {
     code: "SUBSCRIPTION_ALREADY_EXISTS",
     message: "subscription already exists",
 };
+
 pub const INVALID_SUBSCRIPTION: ErrorCode = ErrorCode {
     code: "INVALID_SUBSCRIPTION",
     message: "invalid subscription",
 };
+
 pub const PLAN_UPGRADE_REQUIRED: ErrorCode = ErrorCode {
     code: "PLAN_UPGRADE_REQUIRED",
     message: "plan upgrade required",
 };
+
 pub const WEBHOOK_VERIFICATION_FAILED: ErrorCode = ErrorCode {
     code: "WEBHOOK_VERIFICATION_FAILED",
     message: "webhook verification failed",

@@ -1,9 +1,9 @@
-use crate::domain::error::DomainError;
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::new_user::NewUser;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::{DeviceId, UserName};
 use crate::usecase::auth::token::{generate_refresh_token, hash_refresh_token, issue_token};
+use crate::usecase::error::UsecaseError;
 use chrono::Utc;
 use std::sync::Arc;
 
@@ -24,7 +24,7 @@ pub trait SignUpWithMobileDeviceUsecase: Send + Sync {
     async fn execute(
         &self,
         input: SignUpWithMobileDeviceInput,
-    ) -> Result<SignUpWithMobileDeviceOutput, DomainError>;
+    ) -> Result<SignUpWithMobileDeviceOutput, UsecaseError>;
 }
 
 pub struct SignUpWithMobileDeviceUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
@@ -56,10 +56,15 @@ where
     async fn execute(
         &self,
         input: SignUpWithMobileDeviceInput,
-    ) -> Result<SignUpWithMobileDeviceOutput, DomainError> {
+    ) -> Result<SignUpWithMobileDeviceOutput, UsecaseError> {
         let device_id = DeviceId::new(input.device_id);
         {
-            if let Some(existing) = self.user_repository.find_by_device_id(&device_id).await? {
+            if let Some(existing) = self
+                .user_repository
+                .find_by_device_id(&device_id)
+                .await
+                .map_err(UsecaseError::Repository)?
+            {
                 let access_token = issue_token(
                     existing.id.value(),
                     &self.jwt_secret,
@@ -71,7 +76,8 @@ where
 
                 self.refresh_token_repository
                     .create(existing.id, token_hash, expires_at)
-                    .await?;
+                    .await
+                    .map_err(UsecaseError::Repository)?;
 
                 return Ok(SignUpWithMobileDeviceOutput {
                     user_id: existing.id.value(),
@@ -85,19 +91,23 @@ where
         let name = input
             .name
             .unwrap_or_else(|| format!("user_{}", &device_id.value()[..8]));
-        let user_name = UserName::new(name)?;
+        let user_name = UserName::new(name).map_err(UsecaseError::Domain)?;
         let new_user = NewUser::new_mobile_device(user_name, device_id);
-        let created = self.user_repository.create(new_user).await?;
+        let created = self
+            .user_repository
+            .create(new_user)
+            .await
+            .map_err(UsecaseError::Repository)?;
         let access_token =
-            issue_token(created.id.value(), &self.jwt_secret, created.plan.as_str())?;
+            issue_token(created.id.value(), created.plan.as_str(), &self.jwt_secret)?;
         let refresh_token = generate_refresh_token();
         let token_hash = hash_refresh_token(&refresh_token);
         let expires_at = Utc::now() + chrono::Duration::days(30);
 
         self.refresh_token_repository
             .create(created.id, token_hash, expires_at)
-            .await?;
-
+            .await
+            .map_err(UsecaseError::Repository)?;
         Ok(SignUpWithMobileDeviceOutput {
             user_id: created.id.value(),
             access_token,

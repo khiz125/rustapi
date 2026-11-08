@@ -1,6 +1,6 @@
-use crate::domain::error::DomainError;
 use crate::domain::refresh_token::refresh_token::RefreshToken;
 use crate::domain::refresh_token::vo::{RefreshTokenId, TokenHash};
+use crate::domain::repo_error::RepositoryError;
 use crate::domain::user::vo::UserId;
 
 use crate::domain::types::UtcDateTime;
@@ -14,13 +14,13 @@ pub trait RefreshTokenRepository: Send + Sync {
     async fn find_by_hash(
         &self,
         token_hash: &TokenHash,
-    ) -> Result<Option<RefreshToken>, DomainError>;
+    ) -> Result<Option<RefreshToken>, RepositoryError>;
     async fn create(
         &self,
         user_id: UserId,
         token_hash: TokenHash,
         expires_at: UtcDateTime,
-    ) -> Result<RefreshToken, DomainError>;
-    async fn revoke(&self, id: RefreshTokenId) -> Result<(), DomainError>;
-    async fn revoke_all_for_user(&self, user_id: UserId) -> Result<(), DomainError>;
+    ) -> Result<RefreshToken, RepositoryError>;
+    async fn revoke(&self, id: RefreshTokenId) -> Result<(), RepositoryError>;
+    async fn revoke_all_for_user(&self, user_id: UserId) -> Result<(), RepositoryError>;
 }

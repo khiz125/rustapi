@@ -1,5 +1,5 @@
 use super::constants::*;
-use crate::domain::error::DomainError;
+use crate::domain::error::OAuthError;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -38,7 +38,7 @@ impl GoogleOAuthClient {
         )
     }
 
-    async fn exchange_code(&self, code: &str) -> Result<String, DomainError> {
+    async fn exchange_code(&self, code: &str) -> Result<String, OAuthError> {
         let response = self
             .http_client
             .post(GOOGLE_TOKEN_URL)
@@ -51,15 +51,15 @@ impl GoogleOAuthClient {
             ])
             .send()
             .await
-            .map_err(|e| DomainError::Unexpected(e.to_string()))?
+            .map_err(|e| OAuthError::RequestFailed(e.to_string()))?
             .json::<TokenResponse>()
             .await
-            .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+            .map_err(|e| OAuthError::InvalidResponse(e.to_string()))?;
 
         Ok(response.access_token)
     }
 
-    pub async fn fetch_user_info(&self, code: &str) -> Result<GoogleUserInfo, DomainError> {
+    pub async fn fetch_user_info(&self, code: &str) -> Result<GoogleUserInfo, OAuthError> {
         let access_token = self.exchange_code(code).await?;
 
         let user_info = self
@@ -68,10 +68,10 @@ impl GoogleOAuthClient {
             .bearer_auth(&access_token)
             .send()
             .await
-            .map_err(|e| DomainError::Unexpected(e.to_string()))?
+            .map_err(|e| OAuthError::RequestFailed(e.to_string()))?
             .json::<GoogleUserInfo>()
             .await
-            .map_err(|e| DomainError::Unexpected(e.to_string()))?;
+            .map_err(|e| OAuthError::InvalidResponse(e.to_string()))?;
 
         Ok(user_info)
     }

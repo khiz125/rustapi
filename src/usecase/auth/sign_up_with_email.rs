@@ -5,8 +5,8 @@ use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::{Email, UserName};
 use crate::usecase::auth::password_crypto::hash_password;
 use crate::usecase::auth::token::issue_tokens;
+use crate::usecase::error::UsecaseError;
 
-use chrono::Utc;
 use std::sync::Arc;
 
 pub struct SignUpWithEmailInput {
@@ -26,7 +26,7 @@ pub trait SignUpWithEmailUsecase: Send + Sync {
     async fn execute(
         &self,
         input: SignUpWithEmailInput,
-    ) -> Result<SignUpWithEmailOutput, DomainError>;
+    ) -> Result<SignUpWithEmailOutput, UsecaseError>;
 }
 
 pub struct SignUpWithEmailUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
@@ -58,17 +58,27 @@ where
     async fn execute(
         &self,
         input: SignUpWithEmailInput,
-    ) -> Result<SignUpWithEmailOutput, DomainError> {
-        let name = UserName::new(input.name)?;
-        let email = Email::new(input.email)?;
+    ) -> Result<SignUpWithEmailOutput, UsecaseError> {
+        let name = UserName::new(input.name).map_err(UsecaseError::Domain)?;
+        let email = Email::new(input.email).map_err(UsecaseError::Domain)?;
 
-        if self.user_repository.find_by_email(&email).await?.is_some() {
-            return Err(DomainError::EmailAlreadyExists);
+        if self
+            .user_repository
+            .find_by_email(&email)
+            .await
+            .map_err(UsecaseError::Repository)?
+            .is_some()
+        {
+            return Err(UsecaseError::Domain(DomainError::EmailAlreadyExists))?;
         }
 
         let password_hash = hash_password(&input.password)?;
         let new_user = NewUser::new_password(name, email, password_hash);
-        let created = self.user_repository.create(new_user).await?;
+        let created = self
+            .user_repository
+            .create(new_user)
+            .await
+            .map_err(UsecaseError::Repository)?;
 
         let (access_token, refresh_token) = issue_tokens(
             created.id,
@@ -97,6 +107,7 @@ mod tests {
     use crate::domain::user::user_auth::UserAuth;
     use crate::domain::user::vo::{Email, UserId, UserPlan};
     use crate::usecase::auth::sign_up_with_email::SignUpWithEmailInput;
+    use chrono::Utc;
     use std::sync::Arc;
 
     fn make_usecase(
@@ -185,7 +196,10 @@ mod tests {
             })
             .await;
 
-        assert!(matches!(result, Err(DomainError::EmailAlreadyExists)));
+        assert!(matches!(
+            result,
+            Err(UsecaseError::Domain(DomainError::EmailAlreadyExists))
+        ));
     }
 
     #[tokio::test]
@@ -198,7 +212,10 @@ mod tests {
             })
             .await;
 
-        assert!(matches!(result, Err(DomainError::InvalidEmail(_))));
+        assert!(matches!(
+            result,
+            Err(UsecaseError::Domain(DomainError::InvalidEmail(_)))
+        ));
     }
 
     #[tokio::test]
@@ -211,6 +228,9 @@ mod tests {
             })
             .await;
 
-        assert!(matches!(result, Err(DomainError::InvalidUserName(_))));
+        assert!(matches!(
+            result,
+            Err(UsecaseError::Domain(DomainError::InvalidUserName(_)))
+        ));
     }
 }

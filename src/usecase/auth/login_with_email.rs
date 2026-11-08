@@ -5,6 +5,7 @@ use crate::domain::user::user_auth::AuthMethod;
 use crate::domain::user::vo::email::Email;
 use crate::usecase::auth::password_crypto::verify_password;
 use crate::usecase::auth::token::{generate_refresh_token, hash_refresh_token, issue_token};
+use crate::usecase::error::UsecaseError;
 use chrono::Utc;
 use std::sync::Arc;
 
@@ -24,7 +25,7 @@ pub trait LoginWithEmailUsecase: Send + Sync {
     async fn execute(
         &self,
         input: LoginWithEmailInput,
-    ) -> Result<LoginWithEmailOutput, DomainError>;
+    ) -> Result<LoginWithEmailOutput, UsecaseError>;
 }
 
 pub struct LoginWithEmailUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
@@ -56,31 +57,40 @@ where
     async fn execute(
         &self,
         input: LoginWithEmailInput,
-    ) -> Result<LoginWithEmailOutput, DomainError> {
-        let email = Email::new(input.email)?;
+    ) -> Result<LoginWithEmailOutput, UsecaseError> {
+        let email = Email::new(input.email).map_err(UsecaseError::Domain)?;
 
         let user = self
             .user_repository
             .find_by_email(&email)
-            .await?
-            .ok_or(DomainError::UserNotFound)?;
+            .await
+            .map_err(UsecaseError::Repository)?
+            .ok_or(UsecaseError::Domain(DomainError::InvalidCredentials))?;
 
         let password_hash = match &user.auth.auth_method {
             AuthMethod::Password { password_hash, .. } => password_hash.value(),
-            AuthMethod::OAuth { .. } => return Err(DomainError::NotPasswordAuthUser),
-            AuthMethod::MobileDevice { .. } => return Err(DomainError::NotPasswordAuthUser),
+            AuthMethod::OAuth { .. } | AuthMethod::MobileDevice { .. } => {
+                return Err(UsecaseError::Domain(DomainError::InvalidCredentials));
+            }
         };
 
-        verify_password(&input.password, password_hash)?;
+        match verify_password(&input.password, password_hash) {
+            Ok(()) => {}
+            Err(UsecaseError::Domain(DomainError::IncorrectPassword)) => {
+                return Err(UsecaseError::Domain(DomainError::InvalidCredentials));
+            }
+            Err(e) => return Err(e),
+        }
 
-        let access_token = issue_token(user.id.value(), &self.jwt_secret, user.plan.as_str())?;
+        let access_token = issue_token(user.id.value(), user.plan.as_str(), &self.jwt_secret)?;
         let refresh_token = generate_refresh_token();
         let token_hash = hash_refresh_token(&refresh_token);
         let expires_at = Utc::now() + chrono::Duration::days(30);
 
         self.refresh_token_repository
             .create(user.id, token_hash, expires_at)
-            .await?;
+            .await
+            .map_err(UsecaseError::Repository)?;
 
         Ok(LoginWithEmailOutput {
             user_id: user.id.value(),
@@ -162,7 +172,10 @@ mod tests {
             })
             .await;
 
-        assert!(matches!(result, Err(DomainError::UserNotFound)));
+        assert!(matches!(
+            result,
+            Err(UsecaseError::Domain(DomainError::InvalidCredentials))
+        ));
     }
 
     #[tokio::test]
@@ -180,6 +193,9 @@ mod tests {
             })
             .await;
 
-        assert!(matches!(result, Err(DomainError::IncorrectPassword)));
+        assert!(matches!(
+            result,
+            Err(UsecaseError::Domain(DomainError::InvalidCredentials))
+        ));
     }
 }
