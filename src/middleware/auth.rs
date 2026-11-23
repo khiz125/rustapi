@@ -1,21 +1,20 @@
 use crate::domain::error::DomainError;
 use crate::presentation::error::AppError;
-use crate::usecase::auth::token::Claims;
-use crate::usecase::error::UsecaseError;
-use axum::extract::FromRequestParts;
-use axum::http::request::Parts;
-use jsonwebtoken::{DecodingKey, Validation, decode};
-use std::env;
+use crate::shared::auth::{Claims, JwtSecret, verify_token};
 
+use axum::extract::{FromRef, FromRequestParts};
+use axum::http::request::Parts;
 pub struct AuthUser(pub Claims);
 
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
+    JwtSecret: FromRef<S>,
 {
     type Rejection = AppError;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let secret = JwtSecret::from_ref(state);
         let auth_header = parts
             .headers
             .get("Authorization")
@@ -26,16 +25,7 @@ where
             .strip_prefix("Bearer ")
             .ok_or(AppError::from(DomainError::Unauthorized))?;
 
-        let jwt_secret = env::var("JWT_SECRET")
-            .map_err(|_| AppError::from(UsecaseError::Token("JWT_SECRET not set".into())))?;
-
-        let claims = decode::<Claims>(
-            token,
-            &DecodingKey::from_secret(jwt_secret.as_bytes()),
-            &Validation::default(),
-        )
-        .map_err(|_| AppError::from(DomainError::Unauthorized))?
-        .claims;
+        let claims = verify_token(token, &secret).map_err(AppError::from)?;
 
         Ok(AuthUser(claims))
     }

@@ -40,12 +40,8 @@ where
             .map_err(UsecaseError::Repository)?
             .ok_or(UsecaseError::Domain(DomainError::UserNotFound))?;
 
-        let plan = UserPlan::from_str(&input.plan).ok_or_else(|| {
-            UsecaseError::Domain(DomainError::Unexpected(format!(
-                "unknown plan: {}",
-                input.plan
-            )))
-        })?;
+        let plan = UserPlan::from_str(&input.plan)
+            .ok_or_else(|| UsecaseError::Domain(DomainError::InvalidPlan(input.plan.clone())))?;
 
         self.user_repository
             .update_plan(user_id, plan, input.plan_expires_at)

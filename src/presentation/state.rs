@@ -1,4 +1,5 @@
 use crate::infra::oauth::google::GoogleOAuthClient;
+use crate::shared::auth::JwtSecret;
 use crate::usecase::auth::login_with_email::LoginWithEmailUsecase;
 use crate::usecase::auth::logout::LogoutUsecase;
 use crate::usecase::auth::refresh_token::RefreshTokenUsecase;
@@ -11,6 +12,8 @@ use crate::usecase::user::get_me::GetMeUsecase;
 use crate::usecase::user::update_name::UpdateNameUsecase;
 use crate::usecase::user::update_password::UpdatePasswordUsecase;
 use crate::usecase::user::update_plan::UpdatePlanUsecase;
+
+use axum::extract::FromRef;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -28,4 +31,11 @@ pub struct AppState {
     pub google_oauth_client: Arc<GoogleOAuthClient>,
     pub verify_subscription: Arc<dyn VerifySubscriptionUsecase>,
     pub handle_webhook: Arc<dyn HandleWebhookUsecase>,
+    pub jwt_secret: JwtSecret,
+}
+
+impl FromRef<AppState> for JwtSecret {
+    fn from_ref(state: &AppState) -> Self {
+        state.jwt_secret.clone()
+    }
 }

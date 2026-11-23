@@ -1,5 +1,3 @@
-use crate::domain::refresh_token::repository::RefreshTokenRepository;
-use crate::domain::user::repository::UserRepository;
 use crate::middleware::auth::AuthUser;
 use crate::presentation::error::AppError;
 use crate::presentation::state::AppState;

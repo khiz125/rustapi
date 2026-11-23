@@ -2,8 +2,10 @@ use crate::domain::error::DomainError;
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::UserPlan;
+use crate::shared::auth::JwtSecret;
 use crate::usecase::auth::token::{generate_refresh_token, hash_refresh_token, issue_token};
 use crate::usecase::error::UsecaseError;
+
 use chrono::Utc;
 use std::sync::Arc;
 
@@ -25,14 +27,14 @@ pub trait RefreshTokenUsecase: Send + Sync {
 pub struct RefreshTokenUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
     user_repository: Arc<R>,
     refresh_token_repository: Arc<RT>,
-    jwt_secret: String,
+    jwt_secret: JwtSecret,
 }
 
 impl<R: UserRepository, RT: RefreshTokenRepository> RefreshTokenUsecaseImpl<R, RT> {
     pub fn new(
         user_repository: Arc<R>,
         refresh_token_repository: Arc<RT>,
-        jwt_secret: String,
+        jwt_secret: JwtSecret,
     ) -> Self {
         Self {
             user_repository,

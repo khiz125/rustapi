@@ -55,7 +55,7 @@ where
 
         user.auth
             .change_password(new_hash)
-            .map_err(UsecaseError::Domain);
+            .map_err(UsecaseError::Domain)?;
 
         self.user_repository
             .save_auth(&user.auth)

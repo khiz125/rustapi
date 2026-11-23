@@ -1,4 +1,4 @@
-use crate::domain::error::{self, DomainError, OAuthError};
+use crate::domain::error::{DomainError, OAuthError};
 use crate::domain::repo_error::RepositoryError;
 
 #[derive(Debug, thiserror::Error)]

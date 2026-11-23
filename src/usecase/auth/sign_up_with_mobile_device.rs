@@ -2,8 +2,10 @@ use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::new_user::NewUser;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::{DeviceId, UserName};
+use crate::shared::auth::JwtSecret;
 use crate::usecase::auth::token::{generate_refresh_token, hash_refresh_token, issue_token};
 use crate::usecase::error::UsecaseError;
+
 use chrono::Utc;
 use std::sync::Arc;
 
@@ -30,14 +32,14 @@ pub trait SignUpWithMobileDeviceUsecase: Send + Sync {
 pub struct SignUpWithMobileDeviceUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
     user_repository: Arc<R>,
     refresh_token_repository: Arc<RT>,
-    jwt_secret: String,
+    jwt_secret: JwtSecret,
 }
 
 impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithMobileDeviceUsecaseImpl<R, RT> {
     pub fn new(
         user_repository: Arc<R>,
         refresh_token_repository: Arc<RT>,
-        jwt_secret: String,
+        jwt_secret: JwtSecret,
     ) -> Self {
         Self {
             user_repository,
@@ -99,7 +101,7 @@ where
             .await
             .map_err(UsecaseError::Repository)?;
         let access_token =
-            issue_token(created.id.value(), created.plan.as_str(), &self.jwt_secret)?;
+            issue_token(created.id.value(), &self.jwt_secret, created.plan.as_str())?;
         let refresh_token = generate_refresh_token();
         let token_hash = hash_refresh_token(&refresh_token);
         let expires_at = Utc::now() + chrono::Duration::days(30);
@@ -137,7 +139,7 @@ mod tests {
         SignUpWithMobileDeviceUsecaseImpl::new(
             Arc::new(mock),
             Arc::new(mock_rt),
-            "test_secret".to_string(),
+            JwtSecret::new("test_secret"),
         )
     }
 

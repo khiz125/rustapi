@@ -1,21 +1,14 @@
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::refresh_token::vo::TokenHash;
 use crate::domain::user::vo::UserId;
+use crate::shared::auth::{Claims, JwtSecret};
 use crate::usecase::error::UsecaseError;
 
 use jsonwebtoken::{EncodingKey, Header, encode};
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    pub sub: i64,
-    pub exp: u64,
-    pub plan: String,
-}
-
-pub fn issue_token(user_id: i64, secret: &str, plan: &str) -> Result<String, UsecaseError> {
+pub fn issue_token(user_id: i64, secret: &JwtSecret, plan: &str) -> Result<String, UsecaseError> {
     let exp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|e| UsecaseError::Token(e.to_string()))?
@@ -38,8 +31,8 @@ pub fn issue_token(user_id: i64, secret: &str, plan: &str) -> Result<String, Use
 
 pub async fn issue_tokens<RT: RefreshTokenRepository>(
     user_id: UserId,
+    jwt_secret: &JwtSecret,
     plan: &str,
-    jwt_secret: &str,
     refresh_token_repository: &RT,
 ) -> Result<(String, String), UsecaseError> {
     let access_token = issue_token(user_id.value(), jwt_secret, plan)?;

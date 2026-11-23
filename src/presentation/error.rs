@@ -78,14 +78,6 @@ impl IntoResponse for AppError {
                 DomainError::InvalidRequest(detail) => {
                     (StatusCode::BAD_REQUEST, &ec::INVALID_REQUEST, Some(detail))
                 }
-                DomainError::Unexpected(e) => {
-                    tracing::error!("unexpected error: {}", e);
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        &ec::INTERNAL_SERVER_ERROR,
-                        None,
-                    )
-                }
                 DomainError::SubscriptionNotFound => {
                     (StatusCode::NOT_FOUND, &ec::SUBSCRIPTION_NOT_FOUND, None)
                 }
@@ -97,6 +89,9 @@ impl IntoResponse for AppError {
                     &ec::INVALID_SUBSCRIPTION,
                     Some(detail),
                 ),
+                DomainError::InvalidPlan(d) => {
+                    (StatusCode::BAD_REQUEST, &ec::INVALID_PLAN, Some(d))
+                }
                 DomainError::PlanUpgradeRequired => {
                     (StatusCode::FORBIDDEN, &ec::PLAN_UPGRADE_REQUIRED, None)
                 }

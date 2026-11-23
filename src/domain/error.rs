@@ -26,9 +26,6 @@ pub enum DomainError {
     #[error("user not found")]
     UserNotFound,
 
-    #[error("unexpected error: {0}")]
-    Unexpected(String),
-
     #[error("email already exists")]
     EmailAlreadyExists,
 
@@ -40,6 +37,9 @@ pub enum DomainError {
 
     #[error("invalid subscription: {0}")]
     InvalidSubscription(String),
+
+    #[error("invalid plan: {0}")]
+    InvalidPlan(String),
 
     #[error("plan upgrade required")]
     PlanUpgradeRequired,

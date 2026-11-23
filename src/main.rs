@@ -2,6 +2,7 @@ mod domain;
 mod infra;
 mod middleware;
 mod presentation;
+mod shared;
 mod usecase;
 
 use crate::infra::database::connection::create_pool;
@@ -25,6 +26,8 @@ use usecase::auth::refresh_token::RefreshTokenUsecaseImpl;
 use usecase::auth::sign_up_with_oauth::SignUpWithOAuthUsecaseImpl;
 use usecase::user::update_password::UpdatePasswordUsecaseImpl;
 
+use crate::shared::auth::JwtSecret;
+
 use std::env;
 use std::sync::Arc;
 
@@ -34,7 +37,7 @@ async fn main() {
     dotenvy::dotenv().ok();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    let jwt_secret = JwtSecret::new(env::var("JWT_SECRET").expect("JWT_SECRET must be set"));
     let google_client_id = env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID must be set");
     let google_client_secret =
         env::var("GOOGLE_CLIENT_SECRET").expect("GOOGLE_CLIENT_SECRET must be set");
@@ -95,6 +98,7 @@ async fn main() {
             subscription_repository.clone(),
         )),
         google_oauth_client,
+        jwt_secret: jwt_secret.clone(),
     };
 
     let app = create_router(state);

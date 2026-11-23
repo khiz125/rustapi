@@ -3,6 +3,7 @@ use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::NewUser;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::{Email, UserName};
+use crate::shared::auth::JwtSecret;
 use crate::usecase::auth::password_crypto::hash_password;
 use crate::usecase::auth::token::issue_tokens;
 use crate::usecase::error::UsecaseError;
@@ -32,14 +33,14 @@ pub trait SignUpWithEmailUsecase: Send + Sync {
 pub struct SignUpWithEmailUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
     user_repository: Arc<R>,
     refresh_token_repository: Arc<RT>,
-    jwt_secret: String,
+    jwt_secret: JwtSecret,
 }
 
 impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithEmailUsecaseImpl<R, RT> {
     pub fn new(
         user_repository: Arc<R>,
         refresh_token_repository: Arc<RT>,
-        jwt_secret: String,
+        jwt_secret: JwtSecret,
     ) -> Self {
         Self {
             user_repository,
@@ -117,7 +118,7 @@ mod tests {
         SignUpWithEmailUsecaseImpl::new(
             Arc::new(mock),
             Arc::new(mock_rt),
-            "test_secret".to_string(),
+            JwtSecret::new("test_secret"),
         )
     }
 

@@ -3,9 +3,11 @@ use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::user_auth::AuthMethod;
 use crate::domain::user::vo::email::Email;
+use crate::shared::auth::JwtSecret;
 use crate::usecase::auth::password_crypto::verify_password;
 use crate::usecase::auth::token::{generate_refresh_token, hash_refresh_token, issue_token};
 use crate::usecase::error::UsecaseError;
+
 use chrono::Utc;
 use std::sync::Arc;
 
@@ -31,14 +33,14 @@ pub trait LoginWithEmailUsecase: Send + Sync {
 pub struct LoginWithEmailUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
     user_repository: Arc<R>,
     refresh_token_repository: Arc<RT>,
-    jwt_secret: String,
+    jwt_secret: JwtSecret,
 }
 
 impl<R: UserRepository, RT: RefreshTokenRepository> LoginWithEmailUsecaseImpl<R, RT> {
     pub fn new(
         user_repository: Arc<R>,
         refresh_token_repository: Arc<RT>,
-        jwt_secret: String,
+        jwt_secret: JwtSecret,
     ) -> Self {
         Self {
             user_repository,
@@ -82,7 +84,7 @@ where
             Err(e) => return Err(e),
         }
 
-        let access_token = issue_token(user.id.value(), user.plan.as_str(), &self.jwt_secret)?;
+        let access_token = issue_token(user.id.value(), &self.jwt_secret, user.plan.as_str())?;
         let refresh_token = generate_refresh_token();
         let token_hash = hash_refresh_token(&refresh_token);
         let expires_at = Utc::now() + chrono::Duration::days(30);
@@ -117,7 +119,11 @@ mod tests {
         mock: MockUserRepository,
         mock_rt: MockRefreshTokenRepository,
     ) -> LoginWithEmailUsecaseImpl<MockUserRepository, MockRefreshTokenRepository> {
-        LoginWithEmailUsecaseImpl::new(Arc::new(mock), Arc::new(mock_rt), "test_secret".to_string())
+        LoginWithEmailUsecaseImpl::new(
+            Arc::new(mock),
+            Arc::new(mock_rt),
+            JwtSecret::new("test_secret"),
+        )
     }
 
     fn make_user(raw_password: &str) -> User {

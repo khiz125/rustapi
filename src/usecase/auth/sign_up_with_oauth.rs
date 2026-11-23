@@ -1,9 +1,10 @@
-use crate::domain::error::DomainError;
 use crate::domain::refresh_token::repository::RefreshTokenRepository;
 use crate::domain::user::NewUser;
 use crate::domain::user::repository::UserRepository;
 use crate::domain::user::vo::{Email, OAuthProvider, ProviderUserId, UserName};
+use crate::shared::auth::JwtSecret;
 use crate::usecase::auth::token::issue_tokens;
+
 use crate::usecase::error::UsecaseError;
 
 use std::sync::Arc;
@@ -33,14 +34,14 @@ pub trait SignUpWithOAuthUsecase: Send + Sync {
 pub struct SignUpWithOAuthUsecaseImpl<R: UserRepository, RT: RefreshTokenRepository> {
     user_repository: Arc<R>,
     refresh_token_repository: Arc<RT>,
-    jwt_secret: String,
+    jwt_secret: JwtSecret,
 }
 
 impl<R: UserRepository, RT: RefreshTokenRepository> SignUpWithOAuthUsecaseImpl<R, RT> {
     pub fn new(
         user_repository: Arc<R>,
         refresh_token_repository: Arc<RT>,
-        jwt_secret: String,
+        jwt_secret: JwtSecret,
     ) -> Self {
         Self {
             user_repository,
@@ -70,8 +71,8 @@ where
         {
             let (access_token, refresh_token) = issue_tokens(
                 existing.id,
-                existing.plan.as_str(),
                 &self.jwt_secret,
+                existing.plan.as_str(),
                 &*self.refresh_token_repository,
             )
             .await?;
@@ -117,6 +118,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::error::DomainError;
     use crate::domain::refresh_token::RefreshToken;
     use crate::domain::refresh_token::repository::MockRefreshTokenRepository;
     use crate::domain::refresh_token::vo::{RefreshTokenId, TokenHash};
@@ -133,7 +135,7 @@ mod tests {
         SignUpWithOAuthUsecaseImpl::new(
             Arc::new(mock),
             Arc::new(mock_rt),
-            "test_secret".to_string(),
+            JwtSecret::new("test_secret"),
         )
     }
 

@@ -73,6 +73,11 @@ pub const INVALID_SUBSCRIPTION: ErrorCode = ErrorCode {
     message: "invalid subscription",
 };
 
+pub const INVALID_PLAN: ErrorCode = ErrorCode {
+    code: "INVALID_PLAN",
+    message: "invalid plan",
+};
+
 pub const PLAN_UPGRADE_REQUIRED: ErrorCode = ErrorCode {
     code: "PLAN_UPGRADE_REQUIRED",
     message: "plan upgrade required",
